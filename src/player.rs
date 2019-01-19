@@ -2,7 +2,6 @@ use gstreamer::prelude::*;
 use gtk::prelude::*;
 use mpris_player::{Metadata, MprisPlayer, OrgMprisMediaPlayer2Player, PlaybackStatus};
 use rustio::{Client, Station};
-use libhandy::ActionRowExt;
 
 use std::cell::{Cell, RefCell};
 use std::rc::Rc;
@@ -13,6 +12,7 @@ use std::thread;
 use crate::app::Action;
 use crate::gstreamer_backend::GstreamerBackend;
 use crate::song::Song;
+use crate::widgets::song_row::SongRow;
 
 pub enum PlaybackState {
     Playing,
@@ -109,7 +109,7 @@ impl Player {
 
     pub fn set_station(&self, station: Station) {
         // delete old song, because it's not completely recorded
-        self.current_song.borrow_mut().take().map(|song| song.delete());
+        self.current_song.borrow_mut().take().map(|mut song| song.delete());
 
         self.player_widgets.reset();
         self.player_widgets.title_label.set_text(&station.name);
@@ -158,9 +158,10 @@ impl Player {
                     // Check if song have changed
                     if new_song != old_song {
                         // save/close old song, and add to song history
-                        current_song.borrow().clone().map(|song|{
-                            song.stop();
-                            player_widgets.last_played_listbox.insert(&song.widget, 0);
+                        current_song.borrow().clone().map(|mut song|{
+                            song.finish();
+                            let row = SongRow::new(song);
+                            player_widgets.last_played_listbox.insert(&row.widget, 0);
                         });
 
                         // set new song
@@ -269,7 +270,7 @@ impl Player {
         gtk::timeout_add(250, move || {
             while bus.have_pending() {
                 bus.pop().map(|message|{
-                    //debug!("new message {:?}", message);
+                    debug!("new message {:?}", message);
                     Self::parse_bus_message(&message, player_widgets.clone(), mpris.clone(), backend.clone(), current_song.clone());
                 });
             }

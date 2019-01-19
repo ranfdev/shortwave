@@ -165,7 +165,7 @@ impl GstreamerBackend{
         debug!("Create new muxsinkbin");
         self.create_muxsinkbin(location);
 
-        debug!("Remove block probe...");
+        debug!("Remove block probe..."); //TODO: Fix crash here... (called `Option::unwrap()` on a `None) 169
         self.file_srcpad.remove_probe(self.file_blockprobe_id.take().unwrap());
         self.audio_srcpad.remove_probe(self.audio_blockprobe_id.take().unwrap());
 

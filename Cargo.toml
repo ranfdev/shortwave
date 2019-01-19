@@ -20,6 +20,7 @@ rusqlite = "0.13"
 indexmap = "1.0"
 quick-error = "1.2.2"
 restson = "0.4"
+stopwatch = "0.0.7"
 
 [dependencies.gtk]
 version = "0.5"
