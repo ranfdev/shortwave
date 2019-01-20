@@ -34,9 +34,6 @@ impl SongRow {
 
     fn connect_signals(&self){
         let song = self.song.clone();
-        self.save_button.connect_clicked(move |_|{
-           let new_path = format!("{}/{}.ogg", glib::get_user_special_dir(glib::UserDirectory::Music).unwrap().to_str().unwrap(), song.title);
-           std::fs::copy(song.clone().path, new_path).expect("Could not save song");
-        });
+        self.save_button.connect_clicked(move |_| song.export());
     }
 }

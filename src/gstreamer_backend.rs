@@ -210,3 +210,57 @@ impl GstreamerBackend{
         self.muxsinkbin = Some(bin);
     }
 }
+
+
+
+/////////////////////////////////////////////////////////////////////////////////////
+//                                                                                 //
+//  # Gstreamer Pipeline                                                           //
+//                                                                                 //
+//    ---------      -----------      -----------      --------      ----------    //
+//   | filesrc | -> | decodebin | -> | vorbisenc | -> | oggmux | -> | filesink |   //
+//    ---------      -----------      -----------      --------      ----------    //
+//                                                                                 //
+//  We need a separate pipeline for exporting a song, otherwise the duration would //
+//  be wrong. For reference:                                                       //
+//                                                                                 //
+//  http://gstreamer-devel.966125.n4.nabble.com/Dynamically-change-filesink-File-duration-problem-td4689353.html
+//                                                                                 //
+/////////////////////////////////////////////////////////////////////////////////////
+
+#[derive(Clone)] //TODO: avoid cloning
+pub struct ExportPipeline{
+    pipeline: Pipeline,
+}
+
+impl ExportPipeline{
+    pub fn new(path: &str, export_path: &str) -> Self {
+        let pipeline = Pipeline::new("export_pipeline");
+
+        let filesrc = ElementFactory::make("filesrc", "filesrc").unwrap();
+        let decodebin = ElementFactory::make("decodebin", "decodebin").unwrap();
+        let vorbisenc = ElementFactory::make("vorbisenc", "vorbisenc").unwrap();
+        let oggmux = ElementFactory::make("oggmux", "oggmux").unwrap();
+        let filesink = ElementFactory::make("filesink", "filesink").unwrap();
+
+        pipeline.add_many(&[&filesrc, &decodebin, &vorbisenc, &oggmux, &filesink]).unwrap();
+        Element::link_many(&[&vorbisenc, &oggmux, &filesink]).unwrap();
+        Element::link_many(&[&filesrc, &decodebin]).unwrap();
+
+        let vorbis = vorbisenc.clone();
+        decodebin.connect_pad_added(move |_, src_pad|{
+            let sink_pad = vorbis.get_static_pad("sink").expect("Failed to get static sink pad from convert");
+            let _ = src_pad.link(&sink_pad);
+        });
+
+
+        filesrc.set_property("location", &path).unwrap();
+        filesink.set_property("location", &export_path).unwrap();
+
+        Self { pipeline }
+    }
+
+    pub fn start(&self) {
+        self.pipeline.set_state(State::Playing);
+    }
+}

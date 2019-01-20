@@ -270,7 +270,7 @@ impl Player {
         gtk::timeout_add(250, move || {
             while bus.have_pending() {
                 bus.pop().map(|message|{
-                    debug!("new message {:?}", message);
+                    //debug!("new message {:?}", message);
                     Self::parse_bus_message(&message, player_widgets.clone(), mpris.clone(), backend.clone(), current_song.clone());
                 });
             }
