@@ -17,6 +17,8 @@ impl SongRow {
         widget.set_icon_name("");
 
         let save_button = gtk::Button::new();
+        save_button.set_relief(gtk::ReliefStyle::None);
+        save_button.set_valign(gtk::Align::Center);
         let save_image = gtk::Image::new_from_icon_name("document-save-symbolic", 4);
         save_button.add(&save_image);
         widget.add_action(&save_button);
@@ -34,6 +36,12 @@ impl SongRow {
 
     fn connect_signals(&self){
         let song = self.song.clone();
-        self.save_button.connect_clicked(move |_| song.export());
+        let widget = self.widget.clone();
+        let save_button = self.save_button.clone();
+        self.save_button.connect_clicked(move |_| {
+            song.export();
+            widget.set_subtitle("Saved");
+            save_button.set_visible(false);
+        });
     }
 }

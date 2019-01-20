@@ -25,6 +25,7 @@ struct PlayerWidgets {
     pub subtitle_label: gtk::Label,
     pub subtitle_revealer: gtk::Revealer,
     pub playback_button_stack: gtk::Stack,
+    pub recording_box: gtk::Box,
     pub last_played_listbox: gtk::ListBox,
 }
 
@@ -34,6 +35,7 @@ impl PlayerWidgets {
         let subtitle_label: gtk::Label = builder.get_object("subtitle_label").unwrap();
         let subtitle_revealer: gtk::Revealer = builder.get_object("subtitle_revealer").unwrap();
         let playback_button_stack: gtk::Stack = builder.get_object("playback_button_stack").unwrap();
+        let recording_box: gtk::Box = builder.get_object("recording_box").unwrap();
         let last_played_listbox: gtk::ListBox = builder.get_object("last_played_listbox").unwrap();
 
         PlayerWidgets {
@@ -41,6 +43,7 @@ impl PlayerWidgets {
             subtitle_label,
             subtitle_revealer,
             playback_button_stack,
+            recording_box,
             last_played_listbox,
         }
     }
@@ -162,6 +165,7 @@ impl Player {
                             song.finish();
                             let row = SongRow::new(song);
                             player_widgets.last_played_listbox.insert(&row.widget, 0);
+                            player_widgets.recording_box.set_visible(true);
                         });
 
                         // set new song

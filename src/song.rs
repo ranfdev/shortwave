@@ -1,5 +1,4 @@
 use stopwatch::Stopwatch;
-use gstreamer::prelude::*;
 
 use std::collections::hash_map::DefaultHasher;
 use std::hash::{Hash, Hasher};
