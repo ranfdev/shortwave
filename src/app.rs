@@ -109,6 +109,7 @@ impl App {
         gtk::timeout_add(25, move || a.process_action());
 
         self.gtk_app.run(&[]);
+        self.player.set_playback(PlaybackState::Stopped);
         self.library.write_data();
     }
 
