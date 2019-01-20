@@ -1,11 +1,8 @@
 use stopwatch::Stopwatch;
 use gstreamer::prelude::*;
-use gstreamer::{Element, Pipeline, State, ElementFactory, ClockTime};
 
 use std::collections::hash_map::DefaultHasher;
 use std::hash::{Hash, Hasher};
-use std::thread;
-use std::time;
 
 use crate::gstreamer_backend::ExportBackend;
 

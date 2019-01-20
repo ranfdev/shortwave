@@ -14,10 +14,7 @@ use gstreamer::{Element, Bin, Pipeline, Pad, PadProbeId, State, ElementFactory};
 //                                                                                                      //
 //                                                                                                      //
 //                                                                                                      //
-//  We use the two source pads to block the dataflow, so we can change the muxsinkbin.                  //
-//   - 1 -> file_srcpad                                                                                 //
-//   - 2 -> audio_srcpad                                                                                //
-//                                                                                                      //
+//  We use the the file_srcpad[1] to block the dataflow, so we can change the muxsinkbin.               //
 //  The dataflow gets blocked when the song changes.                                                    //
 //                                                                                                      //
 //                                                                                                      //
@@ -39,8 +36,6 @@ pub struct PlayerBackend{
 
     pub audio_queue: Element,
     pub autoaudiosink: Element,
-    pub audio_srcpad: Pad,
-    pub audio_blockprobe_id: Option<PadProbeId>,
 
     pub file_queue: Element,
     pub muxsinkbin: Option<Bin>,
@@ -60,7 +55,8 @@ impl PlayerBackend{
         let audio_queue = ElementFactory::make("queue", "audio_queue").unwrap();
         let autoaudiosink = ElementFactory::make("autoaudiosink", "autoaudiosink").unwrap();
         let file_queue = ElementFactory::make("queue", "file_queue").unwrap();
-
+        let file_srcpad = file_queue.get_static_pad("src").unwrap();
+        
         // link pipeline elements
         pipeline.add_many(&[&uridecodebin, &audioconvert, &tee, &audio_queue, &autoaudiosink, &file_queue]).unwrap();
         Element::link_many(&[&audioconvert, &tee]).unwrap();
@@ -93,8 +89,7 @@ impl PlayerBackend{
             }
         });
 
-        let file_srcpad = file_queue.get_static_pad("src").unwrap();
-        let audio_srcpad = audio_queue.get_static_pad("src").unwrap();
+
 
         let mut pipeline = Self{
             pipeline,
@@ -103,8 +98,6 @@ impl PlayerBackend{
             tee,
             audio_queue,
             autoaudiosink,
-            audio_srcpad,
-            audio_blockprobe_id: None,
             file_queue,
             muxsinkbin: None,
             file_srcpad,
@@ -120,11 +113,6 @@ impl PlayerBackend{
     }
 
     pub fn block_dataflow(&mut self){
-        // Audio branch
-        let audio_id = self.audio_srcpad.add_probe (gstreamer::PadProbeType::BLOCK_DOWNSTREAM, move|_, _|{
-            gstreamer::PadProbeReturn::Ok
-        }).unwrap();
-
         // File branch
         let muxsinkbin = self.muxsinkbin.clone();
         let file_id = self.file_srcpad.add_probe (gstreamer::PadProbeType::BLOCK_DOWNSTREAM, move|_, _|{
@@ -140,7 +128,6 @@ impl PlayerBackend{
 
         // We need the padprobe id later to remove the block probe
         self.file_blockprobe_id = Some(file_id);
-        self.audio_blockprobe_id = Some(audio_id);
     }
 
     pub fn new_source_uri(&mut self, source: &str){
@@ -167,7 +154,6 @@ impl PlayerBackend{
 
         debug!("Remove block probe..."); //TODO: Fix crash here... (called `Option::unwrap()` on a `None) 169
         self.file_srcpad.remove_probe(self.file_blockprobe_id.take().unwrap());
-        self.audio_srcpad.remove_probe(self.audio_blockprobe_id.take().unwrap());
 
         debug!("Everything ok.");
     }
@@ -269,6 +255,6 @@ impl ExportBackend{
         debug!("* Export song **");
         debug!("Cached song path: {}", self.path);
         debug!("Export song path: {}", self.export_path);
-        self.pipeline.set_state(State::Playing);
+        let _ = self.pipeline.set_state(State::Playing);
     }
 }
