@@ -7,7 +7,7 @@ use std::hash::{Hash, Hasher};
 use std::thread;
 use std::time;
 
-use crate::gstreamer_backend::ExportPipeline;
+use crate::gstreamer_backend::ExportBackend;
 
 #[derive(Clone)]
 pub struct Song {
@@ -15,7 +15,7 @@ pub struct Song {
     pub title_hash: String,
     pub path: String,
     pub duration: Stopwatch,
-    pipeline: ExportPipeline,
+    pipeline: ExportBackend,
 }
 
 impl Song {
@@ -27,7 +27,7 @@ impl Song {
         let duration = Stopwatch::start_new();
 
         let export_path = format!("{}/{}.ogg", glib::get_user_special_dir(glib::UserDirectory::Music).unwrap().to_str().unwrap(), title);
-        let pipeline = ExportPipeline::new(&path, &export_path);
+        let pipeline = ExportBackend::new(&path, &export_path);
 
         Self {
             title: title.to_string(),

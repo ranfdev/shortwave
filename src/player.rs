@@ -10,7 +10,7 @@ use std::sync::{Arc, Mutex};
 use std::thread;
 
 use crate::app::Action;
-use crate::gstreamer_backend::GstreamerBackend;
+use crate::gstreamer_backend::PlayerBackend;
 use crate::song::Song;
 use crate::widgets::song_row::SongRow;
 
@@ -67,7 +67,7 @@ pub struct Player {
     pub widget: gtk::Box,
     player_widgets: Rc<PlayerWidgets>,
 
-    backend: Arc<Mutex<GstreamerBackend>>,
+    backend: Arc<Mutex<PlayerBackend>>,
     mpris: Arc<MprisPlayer>,
     current_station: Cell<Option<Station>>,
     current_song: Rc<RefCell<Option<Song>>>,
@@ -81,7 +81,7 @@ impl Player {
         let builder = gtk::Builder::new_from_resource("/de/haeckerfelix/Gradio/gtk/player.ui");
         let widget: gtk::Box = builder.get_object("player").unwrap();
         let player_widgets = Rc::new(PlayerWidgets::new(builder.clone()));
-        let backend = Arc::new(Mutex::new(GstreamerBackend::new()));
+        let backend = Arc::new(Mutex::new(PlayerBackend::new()));
         let current_station = Cell::new(None);
         let current_song = Rc::new(RefCell::new(None));
 
@@ -148,7 +148,7 @@ impl Player {
         };
     }
 
-    fn parse_bus_message(message: &gstreamer::Message, player_widgets: Rc<PlayerWidgets>, mpris: Arc<MprisPlayer>, backend: Arc<Mutex<GstreamerBackend>>, current_song: Rc<RefCell<Option<Song>>>) {
+    fn parse_bus_message(message: &gstreamer::Message, player_widgets: Rc<PlayerWidgets>, mpris: Arc<MprisPlayer>, backend: Arc<Mutex<PlayerBackend>>, current_song: Rc<RefCell<Option<Song>>>) {
         match message.view() {
             gstreamer::MessageView::Tag(tag) => {
                 tag.get_tags().get::<gstreamer::tags::Title>().map(|t| {

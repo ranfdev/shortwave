@@ -30,7 +30,7 @@ use gstreamer::{Element, Bin, Pipeline, Pad, PadProbeId, State, ElementFactory};
 //                                                                                                      //
 //////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-pub struct GstreamerBackend{
+pub struct PlayerBackend{
     pub pipeline: Pipeline,
 
     pub uridecodebin: Element,
@@ -48,7 +48,7 @@ pub struct GstreamerBackend{
     pub file_blockprobe_id: Option<PadProbeId>,
 }
 
-impl GstreamerBackend{
+impl PlayerBackend{
     pub fn new() -> Self{
         // create gstreamer pipeline
         let pipeline = Pipeline::new("recorder_pipeline");
@@ -229,11 +229,11 @@ impl GstreamerBackend{
 /////////////////////////////////////////////////////////////////////////////////////
 
 #[derive(Clone)] //TODO: avoid cloning
-pub struct ExportPipeline{
+pub struct ExportBackend{
     pipeline: Pipeline,
 }
 
-impl ExportPipeline{
+impl ExportBackend{
     pub fn new(path: &str, export_path: &str) -> Self {
         let pipeline = Pipeline::new("export_pipeline");
 
