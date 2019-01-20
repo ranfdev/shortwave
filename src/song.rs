@@ -26,7 +26,19 @@ impl Song {
         let path = format!("{}/{}.ogg", glib::get_user_cache_dir().unwrap().to_str().unwrap(), title_hash);
         let duration = Stopwatch::start_new();
 
-        let export_path = format!("{}/{}.ogg", glib::get_user_special_dir(glib::UserDirectory::Music).unwrap().to_str().unwrap(), title);
+        // remove special chars from title
+        // if anybody knows a better way to do this, feel free to open a MR on GitLab :)
+        let mut export_title = title.clone().to_string();
+        export_title = export_title.replace("/", "");
+        export_title = export_title.replace("\\", "");
+        export_title = export_title.replace(":", "");
+        export_title = export_title.replace("<", "");
+        export_title = export_title.replace(">", "");
+        export_title = export_title.replace("\"", "");
+        export_title = export_title.replace("|", "");
+        export_title = export_title.replace("?", "");
+        export_title = export_title.replace("*", "");
+        let export_path = format!("{}/{}.ogg", glib::get_user_special_dir(glib::UserDirectory::Music).unwrap().to_str().unwrap(), export_title);
         let pipeline = ExportBackend::new(&path, &export_path);
 
         Self {

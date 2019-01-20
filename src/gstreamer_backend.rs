@@ -228,13 +228,15 @@ impl PlayerBackend{
 //                                                                                 //
 /////////////////////////////////////////////////////////////////////////////////////
 
-#[derive(Clone)] //TODO: avoid cloning
+#[derive(Clone)]
 pub struct ExportBackend{
     pipeline: Pipeline,
+    path: String,
+    export_path: String,
 }
 
 impl ExportBackend{
-    pub fn new(path: &str, export_path: &str) -> Self {
+    pub fn new(path: &str, export_path: &str) -> Self {  
         let pipeline = Pipeline::new("export_pipeline");
 
         let filesrc = ElementFactory::make("filesrc", "filesrc").unwrap();
@@ -253,14 +255,20 @@ impl ExportBackend{
             let _ = src_pad.link(&sink_pad);
         });
 
-
         filesrc.set_property("location", &path).unwrap();
         filesink.set_property("location", &export_path).unwrap();
 
-        Self { pipeline }
+        Self {
+            pipeline,
+            path: path.to_string(),
+            export_path: export_path.to_string()
+        }
     }
 
     pub fn start(&self) {
+        debug!("* Export song **");
+        debug!("Cached song path: {}", self.path);
+        debug!("Export song path: {}", self.export_path);
         self.pipeline.set_state(State::Playing);
     }
 }
