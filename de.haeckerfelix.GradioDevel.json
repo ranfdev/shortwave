@@ -41,12 +41,12 @@
             "name" : "libhandy",
             "buildsystem" : "meson",
             "config-opts" : [
-                "-Dintrospection=true",
+                "-Dintrospection=enabled",
                 "-Dgtk-doc=false",
                 "-Dtests=false",
                 "-Dexamples=false",
                 "-Dvapi=false",
-                "-Dglade_catalog=false"
+                "-Dglade_catalog=disabled"
             ],
             "cleanup" : [
                 "/include",
