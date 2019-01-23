@@ -1,0 +1,26 @@
+include: 'https://gitlab.gnome.org/GNOME/citemplates/raw/master/flatpak/flatpak_ci_initiative.yml'
+
+variables:
+    BUNDLE: "shortwave-dev.flatpak"
+    GIT_SUBMODULE_STRATEGY: recursive
+
+
+flatpak:
+    image: 'registry.gitlab.gnome.org/gnome/gnome-runtime-images/gnome:master'
+    variables:
+        MANIFEST_PATH: "de.haeckerfelix.ShortwaveDevel.json"
+        FLATPAK_MODULE: "shortwave"
+        RUNTIME_REPO: "https://sdk.gnome.org/gnome-nightly.flatpakrepo"
+        APP_ID: "de.haeckerfelix.ShortwaveDevel"
+    extends: .flatpak
+
+review:
+    stage: deploy
+    dependencies:
+        - 'flatpak'
+    extends: '.review'
+
+stop_review:
+    stage: deploy
+    extends: '.stop_review'
+
