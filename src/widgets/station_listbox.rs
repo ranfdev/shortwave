@@ -19,7 +19,7 @@ pub struct StationListBox {
 
 impl StationListBox {
     pub fn new(sender: Sender<Action>, content_type: ContentType) -> Self {
-        let builder = gtk::Builder::new_from_resource("/de/haeckerfelix/Gradio/gtk/station_listbox.ui");
+        let builder = gtk::Builder::new_from_resource("/de/haeckerfelix/Shortwave/gtk/station_listbox.ui");
         let widget: gtk::Box = builder.get_object("station_listbox").unwrap();
         let listbox: gtk::ListBox = builder.get_object("listbox").unwrap();
         let station_model = StationModel::new();

@@ -32,13 +32,13 @@ pub struct Library {
 
 impl Library {
     pub fn new(sender: Sender<Action>, info: &AppInfo) -> Self {
-        let builder = gtk::Builder::new_from_resource("/de/haeckerfelix/Gradio/gtk/library.ui");
+        let builder = gtk::Builder::new_from_resource("/de/haeckerfelix/Shortwave/gtk/library.ui");
         let widget: gtk::Box = builder.get_object("library").unwrap();
         let content_box: gtk::Box = builder.get_object("content_box").unwrap();
         let station_listbox = RefCell::new(StationListBox::new(sender.clone(), ContentType::Library));
         content_box.add(&station_listbox.borrow().widget);
 
-        let db_path = Self::get_database_path("gradio.db").expect("Could not open database path...");
+        let db_path = Self::get_database_path("shortwave.db").expect("Could not open database path...");
 
         let logo_image: gtk::Image = builder.get_object("logo_image").unwrap();
         logo_image.set_from_icon_name(Some(format!("{}-symbolic", info.app_id).as_str()), 128);
@@ -157,7 +157,7 @@ impl Library {
             fs::create_dir(&path.to_str().unwrap())?;
         }
 
-        path.push("gradio");
+        path.push("shortwave");
         if !path.exists() {
             fs::create_dir(&path.to_str().unwrap())?;
         }

@@ -22,7 +22,7 @@ pub struct StationRow {
 
 impl StationRow {
     pub fn new(sender: Sender<Action>, station: Station, content_type: ContentType) -> Self {
-        let builder = gtk::Builder::new_from_resource("/de/haeckerfelix/Gradio/gtk/station_row.ui");
+        let builder = gtk::Builder::new_from_resource("/de/haeckerfelix/Shortwave/gtk/station_row.ui");
         let row: gtk::ListBoxRow = builder.get_object("station_row").unwrap();
 
         let stationrow = Self {

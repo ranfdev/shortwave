@@ -9,7 +9,7 @@ pub struct Notification {
 
 impl Notification {
     pub(crate) fn new(text: &str) -> Self {
-        let builder = gtk::Builder::new_from_resource("/de/haeckerfelix/Gradio/gtk/notification.ui");
+        let builder = gtk::Builder::new_from_resource("/de/haeckerfelix/Shortwave/gtk/notification.ui");
         let revealer: gtk::Revealer = builder.get_object("revealer").unwrap();
         let close_button: gtk::Button = builder.get_object("close_button").unwrap();
         let text_label: gtk::Label = builder.get_object("text_label").unwrap();

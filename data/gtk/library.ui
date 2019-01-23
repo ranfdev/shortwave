@@ -67,7 +67,7 @@
                 <property name="can_focus">False</property>
                 <property name="margin_bottom">12</property>
                 <property name="pixel_size">128</property>
-                <property name="icon_name">de.haeckerfelix.Gradio-symbolic</property>
+                <property name="icon_name">de.haeckerfelix.Shortwave-symbolic</property>
               </object>
               <packing>
                 <property name="expand">False</property>

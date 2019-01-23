@@ -1,7 +1,7 @@
 [package]
-name = "gradio"
+name = "shortwave"
 version = "0.1.0"
-authors = ["Felix Häcker <haecker.felix1207@gmail.com>"]
+authors = ["Felix Häcker <haeckerfelix@gnome.org>"]
 build = "build.rs"
 edition = "2018"
 

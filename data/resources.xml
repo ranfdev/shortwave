@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <gresources>
-  <gresource prefix="/de/haeckerfelix/Gradio/">
+  <gresource prefix="/de/haeckerfelix/Shortwave/">
       <file compressed="true" preprocess="xml-stripblanks">gtk/window.ui</file>
       <file compressed="true" preprocess="xml-stripblanks">gtk/player.ui</file>
       <file compressed="true" preprocess="xml-stripblanks">gtk/recorder.ui</file>

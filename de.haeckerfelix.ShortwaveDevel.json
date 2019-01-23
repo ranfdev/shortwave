@@ -1,12 +1,12 @@
 {
-    "app-id" : "de.haeckerfelix.GradioDevel",
+    "app-id" : "de.haeckerfelix.ShortwaveDevel",
     "runtime" : "org.gnome.Platform",
     "runtime-version" : "master",
     "sdk" : "org.gnome.Sdk",
     "sdk-extensions" : [
         "org.freedesktop.Sdk.Extension.rust-stable"
     ],
-    "command" : "gradio",
+    "command" : "shortwave",
     "tags" : [
         "nightly"
     ],
@@ -23,7 +23,7 @@
         "--socket=wayland",
         "--socket=pulseaudio",
         "--device=dri",
-        "--own-name=org.mpris.MediaPlayer2.Gradio"
+        "--own-name=org.mpris.MediaPlayer2.Shortwave"
     ],
     "build-options" : {
         "append-path" : "/usr/lib/sdk/rust-stable/bin",
@@ -32,7 +32,7 @@
         ],
         "env" : {
             "RUSTFLAGS" : "--error-format=short --remap-path-prefix =../",
-            "CARGO_HOME" : "/run/build/Gradio/cargo",
+            "CARGO_HOME" : "/run/build/Shortwave/cargo",
             "RUST_BACKTRACE" : "1"
         }
     },
@@ -60,7 +60,7 @@
             ]
         },
         {
-            "name" : "gradio",
+            "name" : "shortwave",
             "buildsystem" : "meson",
             "config-opts" : [
                 "-Dprofile=development"
@@ -68,8 +68,7 @@
             "sources" : [
                 {
                     "type" : "git",
-                    "url" : "https://github.com/haecker-felix/gradio.git",
-                    "branch" : "rust_port"
+                    "url" : "https://gitlab.gnome.org/World/Shortwave.git"
                 }
             ]
         }

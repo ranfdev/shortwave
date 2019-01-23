@@ -56,13 +56,13 @@ impl App {
         let info = AppInfo {
             version: option_env!("VERSION").unwrap_or("0.0.0").to_string(),
             profile: option_env!("PROFILE").unwrap_or("default").to_string(),
-            app_name: "Radio".to_string(),
-            app_id: option_env!("APP_ID").unwrap_or("de.haeckerfelix.Gradio").to_string(),
+            app_name: "Shortwave".to_string(),
+            app_id: option_env!("APP_ID").unwrap_or("de.haeckerfelix.Shortwave").to_string(),
         };
 
         // Set custom style
         let p = gtk::CssProvider::new();
-        gtk::CssProvider::load_from_resource(&p, "/de/haeckerfelix/Gradio/gtk/style.css");
+        gtk::CssProvider::load_from_resource(&p, "/de/haeckerfelix/Shortwave/gtk/style.css");
         gtk::StyleContext::add_provider_for_screen(&gdk::Screen::get_default().unwrap(), &p, 500);
 
         let gtk_app = gtk::Application::new(info.app_id.as_str(), gio::ApplicationFlags::FLAGS_NONE).unwrap();
@@ -78,7 +78,7 @@ impl App {
         window.search_box.add(&search.widget);
 
         // Help overlay
-        let builder = gtk::Builder::new_from_resource("/de/haeckerfelix/Gradio/gtk/shortcuts.ui");
+        let builder = gtk::Builder::new_from_resource("/de/haeckerfelix/Shortwave/gtk/shortcuts.ui");
         let dialog: gtk::ShortcutsWindow = builder.get_object("shortcuts").unwrap();
         window.widget.set_help_overlay(Some(&dialog));
 
@@ -94,7 +94,7 @@ impl App {
         });
 
         glib::set_application_name(&app.info.app_name);
-        glib::set_prgname(Some("gradio"));
+        glib::set_prgname(Some("shortwave"));
         gtk::Window::set_default_icon_name(&app.info.app_id);
 
         app.setup_gaction();

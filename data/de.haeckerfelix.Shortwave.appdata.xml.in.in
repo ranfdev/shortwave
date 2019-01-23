@@ -1,17 +1,17 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <component type="desktop">
   <id>@appid@.desktop</id>
-  <name>Radio</name>
+  <name>Shortwave</name>
   <summary>Find and listen to internet radio stations</summary>
-  <translation type="gettext">gradio</translation>
+  <translation type="gettext">shortwave</translation>
   <developer_name>Felix Häcker</developer_name>
-  <update_contact>haecker.felix1207@gmail.com</update_contact>
+  <update_contact>haeckerfelix@gnome.org</update_contact>
   <metadata_license>CC0</metadata_license>
   <project_license>GPL-3.0+</project_license>
 
   <description>
     <p>
-      With Radio you can browse, search and of course play radio stations. All
+      With Shortwave you can browse, search and of course play radio stations. All
       this is simple and uncomplicated.
     </p>
   </description>
@@ -31,12 +31,11 @@
     </screenshot>
   </screenshots>
 
-  <url type="homepage">https://github.com/haecker-felix/Gradio</url>
-  <url type="bugtracker">https://github.com/haecker-felix/Gradio/issues</url>
+  <url type="homepage">https://gitlab.gnome.org/World/Shortwave</url>
+  <url type="bugtracker">https://gitlab.gnome.org/World/Shortwave/issues</url>
   <url type="donation">https://de.liberapay.com/haecker-felix</url>
 
   <kudos>
-    <kudo>AppMenu</kudo>
     <kudo>HiDpiIcon</kudo>
     <kudo>ModernToolkit</kudo>
     <kudo>Notifications</kudo>

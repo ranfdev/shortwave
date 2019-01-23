@@ -82,7 +82,7 @@
             <property name="can_focus">False</property>
             <property name="receives_default">False</property>
             <property name="action_name">app.about</property>
-            <property name="text" translatable="yes">About Radio</property>
+            <property name="text" translatable="yes">About Shortwave</property>
           </object>
           <packing>
             <property name="expand">False</property>

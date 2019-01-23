@@ -10,8 +10,8 @@ export PROFILE="$7"
 if [ "$PROFILE" = "Devel" ]
 then	
     echo "DEBUG MODE"
-    cargo build --manifest-path $1/Cargo.toml -p gradio && cp $1/target/debug/gradio $2
+    cargo build --manifest-path $1/Cargo.toml -p shortwave && cp $1/target/debug/shortwave $2
 else
     echo "RELEASE MODE"
-    cargo build --manifest-path $1/Cargo.toml --release -p gradio && cp $1/target/release/gradio $2
+    cargo build --manifest-path $1/Cargo.toml --release -p shortwave && cp $1/target/release/shortwave $2
 fi

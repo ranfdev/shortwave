@@ -8,6 +8,8 @@ _build
 .buildconfig
 de.haeckerfelix.gradio.json~
 de.haeckerfelix.GradioDevel.json~
+de.haeckerfelix.ShortwaveDevel.json~
+de.haeckerfelix.Shortwave.json~
 *.ui~
 .ui~
 ./.cargo

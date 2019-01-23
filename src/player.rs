@@ -90,14 +90,14 @@ pub struct Player {
 
 impl Player {
     pub fn new(sender: Sender<Action>) -> Self {
-        let builder = gtk::Builder::new_from_resource("/de/haeckerfelix/Gradio/gtk/player.ui");
+        let builder = gtk::Builder::new_from_resource("/de/haeckerfelix/Shortwave/gtk/player.ui");
         let widget: gtk::Box = builder.get_object("player").unwrap();
         let player_widgets = Rc::new(PlayerWidgets::new(builder.clone()));
         let backend = Arc::new(Mutex::new(PlayerBackend::new()));
         let current_station = Cell::new(None);
         let current_song = Rc::new(RefCell::new(None));
 
-        let mpris = MprisPlayer::new("Gradio".to_string(), "Gradio".to_string(), "de.haeckerfelix.Gradio".to_string());
+        let mpris = MprisPlayer::new("Shortwave".to_string(), "Shortwave".to_string(), "de.haeckerfelix.Shortwave".to_string());
         mpris.set_can_raise(true);
         mpris.set_can_play(false);
         mpris.set_can_seek(false);

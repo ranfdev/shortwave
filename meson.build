@@ -2,7 +2,7 @@
 # https://gitlab.gnome.org/danigm/fractal/blob/6e2911f9d2353c99a18a6c19fab7f903c4bbb431/meson.build
 
 project(
-  'gradio', 'rust',
+  'shortwave', 'rust',
   version: '7.99.0',
   license: 'GPLv3',
 )
@@ -22,17 +22,17 @@ else
   version_suffix = ''
 endif
 
-application_id = 'de.haeckerfelix.Gradio@0@'.format(profile)
+application_id = 'de.haeckerfelix.Shortwave@0@'.format(profile)
 
-gradio_version = meson.project_version()
-version_array = gradio_version.split('.')
-gradio_major_version = version_array[0].to_int()
-gradio_minor_version = version_array[1].to_int()
-gradio_version_micro = version_array[2].to_int()
+shortwave_version = meson.project_version()
+version_array = shortwave_version.split('.')
+shortwave_major_version = version_array[0].to_int()
+shortwave_minor_version = version_array[1].to_int()
+shortwave_version_micro = version_array[2].to_int()
 
-gradio_prefix = get_option('prefix')
-gradio_bindir = join_paths(gradio_prefix, get_option('bindir'))
-gradio_localedir = join_paths(gradio_prefix, get_option('localedir'))
+shortwave_prefix = get_option('prefix')
+shortwave_bindir = join_paths(shortwave_prefix, get_option('bindir'))
+shortwave_localedir = join_paths(shortwave_prefix, get_option('localedir'))
 
 datadir = get_option('datadir')
 
@@ -56,22 +56,22 @@ sources = c.stdout().strip().split('\n')
 cargo_release = custom_target('cargo-build',
                         build_by_default: true,
                         input: sources,
-                        output: ['gradio'],
+                        output: ['shortwave'],
                         install: true,
-                        install_dir: gradio_bindir,
+                        install_dir: shortwave_bindir,
                         console: true,
                         command: [cargo_script,
                                   '@CURRENT_SOURCE_DIR@',
                                   '@OUTPUT@',
-                                  gradio_localedir,
+                                  shortwave_localedir,
                                   application_id,
                                   name_suffix,
-                                  gradio_version + version_suffix,
+                                  shortwave_version + version_suffix,
                                   profile
                                  ])
 
 run_target('release', command: ['build-aux/release.sh',
-                                meson.project_name() + '-' + gradio_version
+                                meson.project_name() + '-' + shortwave_version
                                ])
 
 meson.add_install_script('build-aux/meson_post_install.py')

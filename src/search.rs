@@ -18,7 +18,7 @@ pub struct Search {
 
 impl Search {
     pub fn new(sender: Sender<Action>) -> Self {
-        let builder = gtk::Builder::new_from_resource("/de/haeckerfelix/Gradio/gtk/search.ui");
+        let builder = gtk::Builder::new_from_resource("/de/haeckerfelix/Shortwave/gtk/search.ui");
         let widget: gtk::Box = builder.get_object("search").unwrap();
 
         let results_box: gtk::Box = builder.get_object("results_box").unwrap();
