@@ -19,6 +19,7 @@ pub enum Action {
     ViewRaise,
     ViewSetSorting(Sorting, Order),
     PlaybackSetStation(Station),
+    PlaybackSetVolume(f64),
     PlaybackStart,
     PlaybackStop,
     LibraryWrite,
@@ -220,6 +221,7 @@ impl App {
                     self.player.set_station(station.clone());
                     self.window.set_sidebar_view(SidebarView::Playback);
                 },
+                Action::PlaybackSetVolume(volume) => self.player.set_volume(volume),
                 Action::PlaybackStart => self.player.set_playback(PlaybackState::Playing),
                 Action::PlaybackStop => self.player.set_playback(PlaybackState::Stopped),
                 Action::LibraryWrite => self.library.write_data(),

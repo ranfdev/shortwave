@@ -1,5 +1,5 @@
 use gstreamer::prelude::*;
-use gstreamer::{Element, Bin, Pipeline, Pad, PadProbeId, State, ElementFactory};
+use gstreamer::{Element, Bin, Bus, Pipeline, Pad, PadProbeId, State, ElementFactory};
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////////
 //                                                                                                      //
@@ -8,9 +8,9 @@ use gstreamer::{Element, Bin, Pipeline, Pad, PadProbeId, State, ElementFactory};
 //                                           |     | -> | queue [1] -> | muxsinkbin |                   //
 //    --------------      --------------     |     |     --------       ------------                    //
 //   | uridecodebin | -> | audioconvert | -> | tee |                                                    //
-//    --------------      --------------     |     |     --------       ---------------                 //
-//                                           |     | -> | queue [2] -> | autoaudiosink |                //
-//                                            -----      --------       ---------------                 //
+//    --------------      --------------     |     |     --------       --------      ---------------   //
+//                                           |     | -> | queue [2] -> | volume | -> | autoaudiosink |  //
+//                                            -----      --------       --------      ---------------   //
 //                                                                                                      //
 //                                                                                                      //
 //                                                                                                      //
@@ -28,19 +28,20 @@ use gstreamer::{Element, Bin, Pipeline, Pad, PadProbeId, State, ElementFactory};
 //////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 pub struct PlayerBackend{
-    pub pipeline: Pipeline,
+    pipeline: Pipeline,
 
-    pub uridecodebin: Element,
-    pub audioconvert: Element,
-    pub tee: Element,
+    uridecodebin: Element,
+    audioconvert: Element,
+    tee: Element,
 
-    pub audio_queue: Element,
-    pub autoaudiosink: Element,
+    audio_queue: Element,
+    volume: Element,
+    autoaudiosink: Element,
 
-    pub file_queue: Element,
-    pub muxsinkbin: Option<Bin>,
-    pub file_srcpad: Pad,
-    pub file_blockprobe_id: Option<PadProbeId>,
+    file_queue: Element,
+    muxsinkbin: Option<Bin>,
+    file_srcpad: Pad,
+    file_blockprobe_id: Option<PadProbeId>,
 }
 
 impl PlayerBackend{
@@ -53,12 +54,13 @@ impl PlayerBackend{
         let audioconvert = ElementFactory::make("audioconvert", "audioconvert").unwrap();
         let tee = ElementFactory::make("tee", "tee").unwrap();
         let audio_queue = ElementFactory::make("queue", "audio_queue").unwrap();
+        let volume = ElementFactory::make("volume", "volume").unwrap();
         let autoaudiosink = ElementFactory::make("autoaudiosink", "autoaudiosink").unwrap();
         let file_queue = ElementFactory::make("queue", "file_queue").unwrap();
         let file_srcpad = file_queue.get_static_pad("src").unwrap();
         
         // link pipeline elements
-        pipeline.add_many(&[&uridecodebin, &audioconvert, &tee, &audio_queue, &autoaudiosink, &file_queue]).unwrap();
+        pipeline.add_many(&[&uridecodebin, &audioconvert, &tee, &audio_queue, &volume, &autoaudiosink, &file_queue]).unwrap();
         Element::link_many(&[&audioconvert, &tee]).unwrap();
         let tee_tempmlate = tee.get_pad_template ("src_%u").unwrap();
 
@@ -66,10 +68,11 @@ impl PlayerBackend{
         let tee_file_srcpad = tee.request_pad(&tee_tempmlate, None, None).unwrap();
         let _ = tee_file_srcpad.link(&file_queue.get_static_pad("sink").unwrap());
 
-        // link tee -> queue -> autoaudiosink
+        // link tee -> queue -> volume -> autoaudiosink
         let tee_audio_srcpad = tee.request_pad(&tee_tempmlate, None, None).unwrap();
         let _ = tee_audio_srcpad.link(&audio_queue.get_static_pad("sink").unwrap());
-        let _ = audio_queue.link(&autoaudiosink);
+        let _ = audio_queue.link(&volume);
+        let _ = volume.link(&autoaudiosink);
 
         // dynamically link uridecodebin element with audioconvert element
         let convert = audioconvert.clone();
@@ -97,6 +100,7 @@ impl PlayerBackend{
             audioconvert,
             tee,
             audio_queue,
+            volume,
             autoaudiosink,
             file_queue,
             muxsinkbin: None,
@@ -110,6 +114,15 @@ impl PlayerBackend{
 
     pub fn set_state(&self, state: gstreamer::State){
         let _ = self.pipeline.set_state(state);
+    }
+
+    pub fn set_volume(&self, v: f64){
+        debug!("Set volume: {}", v);
+        self.volume.set_property("volume", &v).unwrap();
+    }
+
+    pub fn get_pipeline_bus(&self) -> Bus{
+        self.pipeline.get_bus().expect("Unable to get pipeline bus")
     }
 
     pub fn block_dataflow(&mut self){

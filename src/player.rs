@@ -25,6 +25,9 @@ struct PlayerWidgets {
     pub subtitle_label: gtk::Label,
     pub subtitle_revealer: gtk::Revealer,
     pub playback_button_stack: gtk::Stack,
+    pub start_playback_button: gtk::Button,
+    pub stop_playback_button: gtk::Button,
+    pub volume_button: gtk::VolumeButton,
     pub recording_box: gtk::Box,
     pub last_played_listbox: gtk::ListBox,
 }
@@ -35,6 +38,9 @@ impl PlayerWidgets {
         let subtitle_label: gtk::Label = builder.get_object("subtitle_label").unwrap();
         let subtitle_revealer: gtk::Revealer = builder.get_object("subtitle_revealer").unwrap();
         let playback_button_stack: gtk::Stack = builder.get_object("playback_button_stack").unwrap();
+        let start_playback_button: gtk::Button = builder.get_object("start_playback_button").unwrap();
+        let stop_playback_button: gtk::Button = builder.get_object("stop_playback_button").unwrap();
+        let volume_button: gtk::VolumeButton = builder.get_object("volume_button").unwrap();
         let recording_box: gtk::Box = builder.get_object("recording_box").unwrap();
         let last_played_listbox: gtk::ListBox = builder.get_object("last_played_listbox").unwrap();
 
@@ -43,6 +49,9 @@ impl PlayerWidgets {
             subtitle_label,
             subtitle_revealer,
             playback_button_stack,
+            start_playback_button,
+            stop_playback_button,
+            volume_button,
             recording_box,
             last_played_listbox,
         }
@@ -151,6 +160,10 @@ impl Player {
         };
     }
 
+    pub fn set_volume(&self, volume: f64){
+        self.backend.lock().unwrap().set_volume(volume);
+    }
+
     fn parse_bus_message(message: &gstreamer::Message, player_widgets: Rc<PlayerWidgets>, mpris: Arc<MprisPlayer>, backend: Arc<Mutex<PlayerBackend>>, current_song: Rc<RefCell<Option<Song>>>) {
         match message.view() {
             gstreamer::MessageView::Tag(tag) => {
@@ -235,16 +248,14 @@ impl Player {
 
     fn setup_signals(&self) {
         // start_playback_button
-        let start_playback_button: gtk::Button = self.builder.get_object("start_playback_button").unwrap();
         let sender = self.sender.clone();
-        start_playback_button.connect_clicked(move |_| {
+        self.player_widgets.start_playback_button.connect_clicked(move |_| {
             sender.send(Action::PlaybackStart).unwrap();
         });
 
         // stop_playback_button
-        let stop_playback_button: gtk::Button = self.builder.get_object("stop_playback_button").unwrap();
         let sender = self.sender.clone();
-        stop_playback_button.connect_clicked(move |_| {
+        self.player_widgets.stop_playback_button.connect_clicked(move |_| {
             sender.send(Action::PlaybackStop).unwrap();
         });
 
@@ -265,8 +276,14 @@ impl Player {
             };
         });
 
+        // volume button
+        let sender = self.sender.clone();
+        self.player_widgets.volume_button.connect_value_changed(move|_, value|{
+            sender.send(Action::PlaybackSetVolume(value)).unwrap();
+        });
+
         // new backend (pipeline) bus messages
-        let bus = self.backend.lock().unwrap().pipeline.get_bus().expect("Unable to get pipeline bus");
+        let bus = self.backend.lock().unwrap().get_pipeline_bus();
         let player_widgets = self.player_widgets.clone();
         let backend = self.backend.clone();
         let current_song = self.current_song.clone();
