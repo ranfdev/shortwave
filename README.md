@@ -1,11 +1,7 @@
 # Shortwave
 Find and listen to internet radio stations
 
-![alt text](https://gitlab.gnome.org/haecker-felix/Radio/raw/rust_port/data/icons/hicolor/scalable/apps/de.haeckerfelix.Gradio.svg "Logo")
-
-## Development notes
-- If you want to see the old stable Vala version, [click here](https://gitlab.gnome.org/World/tree/gradio-old). 
-- Gradio will be renamed from 'Gradio' to 'Shortwave'.  
+![alt text](https://gitlab.gnome.org/World/Shortwave/raw/master/data/icons/hicolor/scalable/apps/de.haeckerfelix.Shortwave.svg "Logo")
 
 ## Available on Flathub
 <a href='https://flathub.org/apps/details/de.haeckerfelix.gradio'><img width='240' alt='Download on Flathub' src='https://flathub.org/assets/badges/flathub-badge-en.png'/></a>
@@ -22,6 +18,10 @@ Yes! We use the awesome [libhandy](https://source.puri.sm/Librem5/libhandy) libr
 - Which database does Shortwave use?
 
 [radio-browser.info](http://www.radio-browser.info/gui/#/). It's a community database. Everybody can add/edit information.
+
+- Where I can find the old Gradio source code?
+
+The old Gradio Vala source code is still available in the [gradio-old](https://gitlab.gnome.org/World/Shortwave/tree/gradio-old) branch. 
 
 ## Building
 Shortwave can be built and run with [Gnome Builder](https://wiki.gnome.org/Apps/Builder) >= 3.28.
