@@ -134,6 +134,13 @@ impl App {
         });
         self.gtk_app.set_accels_for_action("app.save", &["<primary>s"]);
 
+        // Search / add stations
+        let sender = self.sender.clone();
+        self.add_gaction("search", move |_, _| {
+            sender.send(Action::ViewShowSearch).unwrap();
+        });
+        self.gtk_app.set_accels_for_action("app.search", &["<primary>f"]);
+
         // Import library
         let sender = self.sender.clone();
         self.add_gaction("import-library", move |_, _| {
