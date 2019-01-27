@@ -27,6 +27,7 @@ use gstreamer::{Bin, Bus, Element, ElementFactory, Pad, PadProbeId, Pipeline, St
 //                                                                                                      //
 //////////////////////////////////////////////////////////////////////////////////////////////////////////
 
+#[allow(dead_code)]
 pub struct PlayerBackend {
     pipeline: Pipeline,
 

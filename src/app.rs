@@ -9,7 +9,7 @@ use crate::library::Library;
 use crate::player::{PlaybackState, Player};
 use crate::search::Search;
 use crate::station_model::{Order, Sorting};
-use crate::window::{SidebarView, View, Window};
+use crate::window::{View, Window};
 
 #[derive(Debug, Clone)]
 pub enum Action {
@@ -226,7 +226,7 @@ impl App {
                 Action::ViewSetSorting(sorting, order) => self.library.set_sorting(sorting, order),
                 Action::PlaybackSetStation(station) => {
                     self.player.set_station(station.clone());
-                    self.window.set_sidebar_view(SidebarView::Playback);
+                    self.window.show_sidebar_player(true);
                 }
                 Action::PlaybackSetVolume(volume) => self.player.set_volume(volume),
                 Action::PlaybackStart => self.player.set_playback(PlaybackState::Playing),

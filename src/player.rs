@@ -83,7 +83,6 @@ pub struct Player {
     current_station: Cell<Option<Station>>,
     current_song: Rc<RefCell<Option<Song>>>,
 
-    builder: gtk::Builder,
     sender: Sender<Action>,
 }
 
@@ -110,7 +109,6 @@ impl Player {
             mpris,
             current_station,
             current_song,
-            builder,
             sender,
         };
 
