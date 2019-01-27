@@ -1,26 +1,83 @@
-include: 'https://gitlab.gnome.org/GNOME/citemplates/raw/master/flatpak/flatpak_ci_initiative.yml'
+stages:
+  - lint
+  - test
+  - review
 
 variables:
     BUNDLE: "shortwave-dev.flatpak"
     GIT_SUBMODULE_STRATEGY: recursive
 
-
 flatpak:
-    image: 'registry.gitlab.gnome.org/gnome/gnome-runtime-images/gnome:master'
+    image: "registry.gitlab.gnome.org/gnome/gnome-runtime-images/rust_bundle:master"
+    stage: "test"
     variables:
         MANIFEST_PATH: "de.haeckerfelix.ShortwaveDevel.json"
         FLATPAK_MODULE: "shortwave"
+        CONFIGURE_ARGS: "-Dprofile=development"
         RUNTIME_REPO: "https://sdk.gnome.org/gnome-nightly.flatpakrepo"
         APP_ID: "de.haeckerfelix.ShortwaveDevel"
-    extends: .flatpak
+
+    script:
+        - flatpak-builder --stop-at=${FLATPAK_MODULE} app ${MANIFEST_PATH}
+        # Build the flatpak repo
+        - flatpak-builder --run app ${MANIFEST_PATH} meson --prefix=/app ${CONFIGURE_ARGS} _build
+        - flatpak-builder --run app ${MANIFEST_PATH} ninja -C _build install
+
+        # Create a flatpak bundle
+        - flatpak-builder --finish-only app ${MANIFEST_PATH}
+        - flatpak build-export repo app
+        - flatpak build-bundle repo ${BUNDLE} ${APP_ID}
+
+    artifacts:
+        paths:
+            - $BUNDLE
+        expire_in: 2 days
+
+    cache:
+        key: "flatpak"
+        paths:
+          - .flatpak-builder/downloads/
+          - .flatpak-builder/git/
+          - target/
+          - target_test/
 
 review:
-    stage: deploy
+    stage: review
     dependencies:
-        - 'flatpak'
-    extends: '.review'
+        - flatpak
+    script:
+        - echo "Generating flatpak deployment"
+    artifacts:
+        paths:
+            - $BUNDLE
+        expire_in: 30 days
+    environment:
+        name: review/$CI_COMMIT_REF_NAME
+        url: https://gitlab.gnome.org/$CI_PROJECT_PATH/-/jobs/$CI_JOB_ID/artifacts/raw/${BUNDLE}
+        on_stop: stop_review
+    except:
+        - master@World/shortwave
+        - tags
 
 stop_review:
-    stage: deploy
-    extends: '.stop_review'
+    stage: review
+    script:
+        - echo "Stopping flatpak deployment"
+    when: manual
+    environment:
+        name: review/$CI_COMMIT_REF_NAME
+        action: stop
+    except:
+        - master@World/shortwave
+        - tags
 
+# Configure and run rustfmt
+# Exits and builds fails if on bad format
+rustfmt:
+  image: "rust:slim"
+  stage: "lint"
+  script:
+    - rustup component add rustfmt
+    - rustc -Vv && cargo -Vv
+    - cargo fmt --version
+    - cargo fmt --all -- --color=always --check
