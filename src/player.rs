@@ -3,7 +3,7 @@ use gtk::prelude::*;
 use mpris_player::{Metadata, MprisPlayer, OrgMprisMediaPlayer2Player, PlaybackStatus};
 use rustio::{Client, Station};
 
-use std::cell::{Cell, RefCell};
+use std::cell::RefCell;
 use std::rc::Rc;
 use std::sync::mpsc::Sender;
 use std::sync::{Arc, Mutex};
@@ -74,14 +74,58 @@ impl PlayerWidgets {
     }
 }
 
+pub struct SongsBackend {
+    pub current_station: Option<Station>,
+    pub current_song: Option<Song>,
+    pub song_history: Vec<Song>,
+}
+
+impl SongsBackend {
+    pub fn new() -> Self {
+        let current_station = None;
+        let current_song = None;
+        let song_history = Vec::new();
+
+        Self {
+            current_station,
+            current_song,
+            song_history,
+        }
+    }
+
+    pub fn discard_current_song(&mut self) {
+        self.current_song.take().map(|mut song| song.delete());
+    }
+
+    // returns 'true' if song have changed in comparsion to old song
+    pub fn set_new_song(&mut self, song: Song) -> bool {
+        // check if song have changed
+        if self.current_song != Some(song.clone()) {
+            // save current song, and insert it into the history
+            self.current_song.take().map(|mut s| {
+                s.finish();
+                self.song_history.insert(0, s);
+            });
+
+            // set new current_song
+            self.current_song = Some(song);
+            return true;
+        }
+        false
+    }
+
+    pub fn get_previous_song(&self) -> Option<&Song> {
+        self.song_history.get(0)
+    }
+}
+
 pub struct Player {
     pub widget: gtk::Box,
     player_widgets: Rc<PlayerWidgets>,
 
     backend: Arc<Mutex<PlayerBackend>>,
     mpris: Arc<MprisPlayer>,
-    current_station: Cell<Option<Station>>,
-    current_song: Rc<RefCell<Option<Song>>>,
+    songs_backend: Rc<RefCell<SongsBackend>>,
 
     sender: Sender<Action>,
 }
@@ -92,8 +136,7 @@ impl Player {
         let widget: gtk::Box = builder.get_object("player").unwrap();
         let player_widgets = Rc::new(PlayerWidgets::new(builder.clone()));
         let backend = Arc::new(Mutex::new(PlayerBackend::new()));
-        let current_station = Cell::new(None);
-        let current_song = Rc::new(RefCell::new(None));
+        let songs_backend = Rc::new(RefCell::new(SongsBackend::new()));
 
         let mpris = MprisPlayer::new("Shortwave".to_string(), "Shortwave".to_string(), "de.haeckerfelix.Shortwave".to_string());
         mpris.set_can_raise(true);
@@ -107,8 +150,7 @@ impl Player {
             player_widgets,
             backend,
             mpris,
-            current_station,
-            current_song,
+            songs_backend,
             sender,
         };
 
@@ -117,12 +159,12 @@ impl Player {
     }
 
     pub fn set_station(&self, station: Station) {
-        // delete old song, because it's not completely recorded
-        self.current_song.borrow_mut().take().map(|mut song| song.delete());
+        // discard old song, because it's not completely recorded
+        self.songs_backend.borrow_mut().discard_current_song();
 
         self.player_widgets.reset();
         self.player_widgets.title_label.set_text(&station.name);
-        self.current_station.set(Some(station.clone()));
+        self.songs_backend.borrow_mut().current_station = Some(station.clone());
         self.set_playback(PlaybackState::Stopped);
 
         // set mpris metadata
@@ -161,27 +203,24 @@ impl Player {
         self.backend.lock().unwrap().set_volume(volume);
     }
 
-    fn parse_bus_message(message: &gstreamer::Message, player_widgets: Rc<PlayerWidgets>, mpris: Arc<MprisPlayer>, backend: Arc<Mutex<PlayerBackend>>, current_song: Rc<RefCell<Option<Song>>>) {
+    fn parse_bus_message(message: &gstreamer::Message, player_widgets: Rc<PlayerWidgets>, mpris: Arc<MprisPlayer>, backend: Arc<Mutex<PlayerBackend>>, songs_backend: Rc<RefCell<SongsBackend>>) {
         match message.view() {
             gstreamer::MessageView::Tag(tag) => {
                 tag.get_tags().get::<gstreamer::tags::Title>().map(|t| {
-                    let new_song = Some(Song::new(t.get().unwrap()));
-                    let old_song = current_song.borrow().clone();
+                    let new_song = Song::new(t.get().unwrap());
 
                     // Check if song have changed
-                    if new_song != old_song {
-                        // save/close old song, and add to song history
-                        current_song.borrow().clone().map(|mut song| {
-                            song.finish();
-                            let row = SongRow::new(song);
+                    if songs_backend.borrow_mut().set_new_song(new_song.clone()) {
+                        // add previous song to song_history
+                        songs_backend.borrow().get_previous_song().clone().map(|song| {
+                            let row = SongRow::new(song.clone());
                             player_widgets.last_played_listbox.insert(&row.widget, 0);
                             player_widgets.recording_box.set_visible(true);
                         });
 
                         // set new song
-                        debug!("New song: {:?}", new_song.clone().unwrap().title);
-                        player_widgets.set_title(&new_song.clone().unwrap().title);
-                        *current_song.borrow_mut() = new_song;
+                        debug!("New song: {:?}", new_song.clone().title);
+                        player_widgets.set_title(&new_song.clone().title);
 
                         // TODO: this would override the artist/art_url field. Needs to be fixed at mpris_player
                         // let mut metadata = Metadata::new();
@@ -224,11 +263,10 @@ impl Player {
                     if let gstreamer::MessageView::Eos(_) = &message.view() {
                         debug!("muxsinkbin got EOS...");
 
-                        if current_song.borrow().is_some() {
-                            let song = current_song.borrow().clone().unwrap();
-
-                            // Old song is saved correctly (cause we got the EOS message),
+                        if songs_backend.borrow().current_song.is_some() {
+                            // Old song got saved correctly (cause we got the EOS message),
                             // so we can start with the new song now
+                            let song = songs_backend.borrow_mut().current_song.clone().unwrap();
                             debug!("Cache song \"{}\" under \"{}\"", song.title, song.path);
                             backend.lock().unwrap().new_filesink_location(&song.path);
                         } else {
@@ -282,13 +320,13 @@ impl Player {
         let bus = self.backend.lock().unwrap().get_pipeline_bus();
         let player_widgets = self.player_widgets.clone();
         let backend = self.backend.clone();
-        let current_song = self.current_song.clone();
+        let songs_backend = self.songs_backend.clone();
         let mpris = self.mpris.clone();
         gtk::timeout_add(250, move || {
             while bus.have_pending() {
                 bus.pop().map(|message| {
                     //debug!("new message {:?}", message);
-                    Self::parse_bus_message(&message, player_widgets.clone(), mpris.clone(), backend.clone(), current_song.clone());
+                    Self::parse_bus_message(&message, player_widgets.clone(), mpris.clone(), backend.clone(), songs_backend.clone());
                 });
             }
             Continue(true)

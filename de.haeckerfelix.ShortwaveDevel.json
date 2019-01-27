@@ -31,7 +31,7 @@
             "--share=network"
         ],
         "env" : {
-            "RUSTFLAGS" : "--error-format=short --remap-path-prefix =../",
+            "RUSTFLAGS" : "--remap-path-prefix =../",
             "CARGO_HOME" : "/run/build/Shortwave/cargo",
             "RUST_BACKTRACE" : "1"
         }

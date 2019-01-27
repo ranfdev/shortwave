@@ -1,6 +1,7 @@
 use stopwatch::Stopwatch;
 
 use std::collections::hash_map::DefaultHasher;
+use std::fs;
 use std::hash::{Hash, Hasher};
 
 use crate::gstreamer_backend::ExportBackend;
@@ -52,7 +53,7 @@ impl Song {
 
     pub fn delete(&mut self) {
         self.finish();
-        // TODO: implement
+        fs::remove_file(&self.path).expect("Could not delete song.");
     }
 
     pub fn export(&self) {
