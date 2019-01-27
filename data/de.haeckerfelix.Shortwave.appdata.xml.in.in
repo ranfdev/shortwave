@@ -6,8 +6,8 @@
   <translation type="gettext">shortwave</translation>
   <developer_name>Felix Häcker</developer_name>
   <update_contact>haeckerfelix@gnome.org</update_contact>
-  <metadata_license>CC0</metadata_license>
-  <project_license>GPL-3.0+</project_license>
+  <metadata_license>CC0-1.0</metadata_license>
+  <project_license>GPL-3.0-or-later</project_license>
 
   <description>
     <p>
