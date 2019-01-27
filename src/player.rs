@@ -63,7 +63,7 @@ impl PlayerWidgets {
         self.subtitle_revealer.set_reveal_child(false);
     }
 
-    pub fn set_title(&self, title: &str){
+    pub fn set_title(&self, title: &str) {
         if title != "" {
             self.subtitle_label.set_text(title);
             self.subtitle_revealer.set_reveal_child(true);
@@ -73,7 +73,6 @@ impl PlayerWidgets {
         }
     }
 }
-
 
 pub struct Player {
     pub widget: gtk::Box,
@@ -160,7 +159,7 @@ impl Player {
         };
     }
 
-    pub fn set_volume(&self, volume: f64){
+    pub fn set_volume(&self, volume: f64) {
         self.backend.lock().unwrap().set_volume(volume);
     }
 
@@ -174,7 +173,7 @@ impl Player {
                     // Check if song have changed
                     if new_song != old_song {
                         // save/close old song, and add to song history
-                        current_song.borrow().clone().map(|mut song|{
+                        current_song.borrow().clone().map(|mut song| {
                             song.finish();
                             let row = SongRow::new(song);
                             player_widgets.last_played_listbox.insert(&row.widget, 0);
@@ -194,9 +193,8 @@ impl Player {
                         debug!("Block the dataflow ...");
                         backend.lock().unwrap().block_dataflow();
                     }
-
                 });
-            },
+            }
             gstreamer::MessageView::StateChanged(sc) => {
                 debug!("playback state changed: {:?}", sc.get_current());
                 let playback_state = match sc.get_current() {
@@ -220,12 +218,12 @@ impl Player {
                         mpris.set_playback_status(PlaybackStatus::Stopped);
                     }
                 };
-            },
+            }
             gstreamer::MessageView::Element(element) => {
                 let structure = element.get_structure().unwrap();
                 if structure.get_name() == "GstBinForwarded" {
                     let message: gstreamer::message::Message = structure.get("message").unwrap();
-                    if let gstreamer::MessageView::Eos(_) = &message.view(){
+                    if let gstreamer::MessageView::Eos(_) = &message.view() {
                         debug!("muxsinkbin got EOS...");
 
                         if current_song.borrow().is_some() {
@@ -235,13 +233,13 @@ impl Player {
                             // so we can start with the new song now
                             debug!("Cache song \"{}\" under \"{}\"", song.title, song.path);
                             backend.lock().unwrap().new_filesink_location(&song.path);
-                        }else{
+                        } else {
                             // Or just redirect the stream to /dev/null
                             backend.lock().unwrap().new_filesink_location("/dev/null");
                         }
                     }
                 }
-            },
+            }
             _ => (),
         };
     }
@@ -278,7 +276,7 @@ impl Player {
 
         // volume button
         let sender = self.sender.clone();
-        self.player_widgets.volume_button.connect_value_changed(move|_, value|{
+        self.player_widgets.volume_button.connect_value_changed(move |_, value| {
             sender.send(Action::PlaybackSetVolume(value)).unwrap();
         });
 
@@ -290,7 +288,7 @@ impl Player {
         let mpris = self.mpris.clone();
         gtk::timeout_add(250, move || {
             while bus.have_pending() {
-                bus.pop().map(|message|{
+                bus.pop().map(|message| {
                     //debug!("new message {:?}", message);
                     Self::parse_bus_message(&message, player_widgets.clone(), mpris.clone(), backend.clone(), current_song.clone());
                 });

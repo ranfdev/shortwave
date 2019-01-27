@@ -24,17 +24,13 @@ impl SongRow {
         widget.add_action(&save_button);
         widget.show_all();
 
-        let row = Self {
-            widget,
-            song,
-            save_button,
-        };
+        let row = Self { widget, song, save_button };
 
         row.connect_signals();
         row
     }
 
-    fn connect_signals(&self){
+    fn connect_signals(&self) {
         let song = self.song.clone();
         let widget = self.widget.clone();
         let save_button = self.save_button.clone();

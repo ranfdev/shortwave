@@ -109,7 +109,7 @@ impl StationModel {
         });
     }
 
-    pub fn clear(&mut self){
+    pub fn clear(&mut self) {
         self.map.clear();
     }
 }

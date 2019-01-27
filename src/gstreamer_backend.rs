@@ -1,5 +1,5 @@
 use gstreamer::prelude::*;
-use gstreamer::{Element, Bin, Bus, Pipeline, Pad, PadProbeId, State, ElementFactory};
+use gstreamer::{Bin, Bus, Element, ElementFactory, Pad, PadProbeId, Pipeline, State};
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////////
 //                                                                                                      //
@@ -27,7 +27,7 @@ use gstreamer::{Element, Bin, Bus, Pipeline, Pad, PadProbeId, State, ElementFact
 //                                                                                                      //
 //////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-pub struct PlayerBackend{
+pub struct PlayerBackend {
     pipeline: Pipeline,
 
     uridecodebin: Element,
@@ -44,8 +44,8 @@ pub struct PlayerBackend{
     file_blockprobe_id: Option<PadProbeId>,
 }
 
-impl PlayerBackend{
-    pub fn new() -> Self{
+impl PlayerBackend {
+    pub fn new() -> Self {
         // create gstreamer pipeline
         let pipeline = Pipeline::new("recorder_pipeline");
 
@@ -58,11 +58,11 @@ impl PlayerBackend{
         let autoaudiosink = ElementFactory::make("autoaudiosink", "autoaudiosink").unwrap();
         let file_queue = ElementFactory::make("queue", "file_queue").unwrap();
         let file_srcpad = file_queue.get_static_pad("src").unwrap();
-        
+
         // link pipeline elements
         pipeline.add_many(&[&uridecodebin, &audioconvert, &tee, &audio_queue, &volume, &autoaudiosink, &file_queue]).unwrap();
         Element::link_many(&[&audioconvert, &tee]).unwrap();
-        let tee_tempmlate = tee.get_pad_template ("src_%u").unwrap();
+        let tee_tempmlate = tee.get_pad_template("src_%u").unwrap();
 
         // link tee -> queue
         let tee_file_srcpad = tee.request_pad(&tee_tempmlate, None, None).unwrap();
@@ -76,7 +76,7 @@ impl PlayerBackend{
 
         // dynamically link uridecodebin element with audioconvert element
         let convert = audioconvert.clone();
-        uridecodebin.connect_pad_added(move |_, src_pad|{
+        uridecodebin.connect_pad_added(move |_, src_pad| {
             let sink_pad = convert.get_static_pad("sink").expect("Failed to get static sink pad from convert");
             if sink_pad.is_linked() {
                 return; // We are already linked. Ignoring.
@@ -86,15 +86,14 @@ impl PlayerBackend{
             let new_pad_struct = new_pad_caps.get_structure(0).expect("Failed to get first structure of caps.");
             let new_pad_type = new_pad_struct.get_name();
 
-            if new_pad_type.starts_with("audio/x-raw") { // check if new_pad is audio
+            if new_pad_type.starts_with("audio/x-raw") {
+                // check if new_pad is audio
                 let _ = src_pad.link(&sink_pad);
                 return;
             }
         });
 
-
-
-        let mut pipeline = Self{
+        let mut pipeline = Self {
             pipeline,
             uridecodebin,
             audioconvert,
@@ -112,38 +111,41 @@ impl PlayerBackend{
         pipeline
     }
 
-    pub fn set_state(&self, state: gstreamer::State){
+    pub fn set_state(&self, state: gstreamer::State) {
         let _ = self.pipeline.set_state(state);
     }
 
-    pub fn set_volume(&self, v: f64){
+    pub fn set_volume(&self, v: f64) {
         debug!("Set volume: {}", v);
         self.volume.set_property("volume", &v).unwrap();
     }
 
-    pub fn get_pipeline_bus(&self) -> Bus{
+    pub fn get_pipeline_bus(&self) -> Bus {
         self.pipeline.get_bus().expect("Unable to get pipeline bus")
     }
 
-    pub fn block_dataflow(&mut self){
+    pub fn block_dataflow(&mut self) {
         // File branch
         let muxsinkbin = self.muxsinkbin.clone();
-        let file_id = self.file_srcpad.add_probe (gstreamer::PadProbeType::BLOCK_DOWNSTREAM, move|_, _|{
-            // Dataflow is blocked
-            debug!("Pad is blocked now.");
+        let file_id = self
+            .file_srcpad
+            .add_probe(gstreamer::PadProbeType::BLOCK_DOWNSTREAM, move |_, _| {
+                // Dataflow is blocked
+                debug!("Pad is blocked now.");
 
-            debug!("Push EOS into muxsinkbin sinkpad...");
-            let sinkpad = muxsinkbin.clone().unwrap().get_static_pad("sink").unwrap();
-            sinkpad.send_event(gstreamer::Event::new_eos().build());
+                debug!("Push EOS into muxsinkbin sinkpad...");
+                let sinkpad = muxsinkbin.clone().unwrap().get_static_pad("sink").unwrap();
+                sinkpad.send_event(gstreamer::Event::new_eos().build());
 
-            gstreamer::PadProbeReturn::Ok
-        }).unwrap();
+                gstreamer::PadProbeReturn::Ok
+            })
+            .unwrap();
 
         // We need the padprobe id later to remove the block probe
         self.file_blockprobe_id = Some(file_id);
     }
 
-    pub fn new_source_uri(&mut self, source: &str){
+    pub fn new_source_uri(&mut self, source: &str) {
         debug!("Stop pipeline...");
         let _ = self.pipeline.set_state(State::Null);
 
@@ -154,7 +156,7 @@ impl PlayerBackend{
         let _ = self.pipeline.set_state(State::Playing);
     }
 
-    pub fn new_filesink_location(&mut self, location: &str){
+    pub fn new_filesink_location(&mut self, location: &str) {
         debug!("Update filesink location to \"{}\"...", location);
 
         debug!("Destroy old muxsinkbin");
@@ -171,7 +173,7 @@ impl PlayerBackend{
         debug!("Everything ok.");
     }
 
-    fn create_muxsinkbin(&mut self, location: &str){
+    fn create_muxsinkbin(&mut self, location: &str) {
         // Create vorbisenc
         let vorbisenc = ElementFactory::make("vorbisenc", "vorbisenc").unwrap();
 
@@ -210,8 +212,6 @@ impl PlayerBackend{
     }
 }
 
-
-
 /////////////////////////////////////////////////////////////////////////////////////
 //                                                                                 //
 //  # Gstreamer Pipeline                                                           //
@@ -228,14 +228,14 @@ impl PlayerBackend{
 /////////////////////////////////////////////////////////////////////////////////////
 
 #[derive(Clone)]
-pub struct ExportBackend{
+pub struct ExportBackend {
     pipeline: Pipeline,
     path: String,
     export_path: String,
 }
 
-impl ExportBackend{
-    pub fn new(path: &str, export_path: &str) -> Self {  
+impl ExportBackend {
+    pub fn new(path: &str, export_path: &str) -> Self {
         let pipeline = Pipeline::new("export_pipeline");
 
         let filesrc = ElementFactory::make("filesrc", "filesrc").unwrap();
@@ -249,7 +249,7 @@ impl ExportBackend{
         Element::link_many(&[&filesrc, &decodebin]).unwrap();
 
         let vorbis = vorbisenc.clone();
-        decodebin.connect_pad_added(move |_, src_pad|{
+        decodebin.connect_pad_added(move |_, src_pad| {
             let sink_pad = vorbis.get_static_pad("sink").expect("Failed to get static sink pad from convert");
             let _ = src_pad.link(&sink_pad);
         });
@@ -260,7 +260,7 @@ impl ExportBackend{
         Self {
             pipeline,
             path: path.to_string(),
-            export_path: export_path.to_string()
+            export_path: export_path.to_string(),
         }
     }
 

@@ -90,15 +90,15 @@ impl Window {
         let view_stack: gtk::Stack = self.builder.get_object("view_stack").unwrap();
         let add_button: gtk::Button = self.builder.get_object("add_button").unwrap();
         let back_button: gtk::Button = self.builder.get_object("back_button").unwrap();
-        leaflet.connect_property_fold_notify(move |leaflet|{
+        leaflet.connect_property_fold_notify(move |leaflet| {
             bottom_switcher.set_visible(leaflet.get_property_folded());
 
-            if !leaflet.get_property_folded(){
-                match view_stack.get_visible_child_name().unwrap().as_ref(){
+            if !leaflet.get_property_folded() {
+                match view_stack.get_visible_child_name().unwrap().as_ref() {
                     "library" => add_button.set_visible(true),
                     _ => back_button.set_visible(true),
                 }
-            }else{
+            } else {
                 back_button.set_visible(false);
                 add_button.set_visible(false);
             }
@@ -108,7 +108,7 @@ impl Window {
         let library_switcher: gtk::RadioButton = self.builder.get_object("library_switcher").unwrap();
         let builder = self.builder.clone();
         let menu_builder = self.menu_builder.clone();
-        library_switcher.connect_clicked(move |_|{
+        library_switcher.connect_clicked(move |_| {
             Self::update_view(View::Library, builder.clone(), menu_builder.clone());
         });
 
@@ -116,7 +116,7 @@ impl Window {
         let playback_switcher: gtk::RadioButton = self.builder.get_object("playback_switcher").unwrap();
         let builder = self.builder.clone();
         let menu_builder = self.menu_builder.clone();
-        playback_switcher.connect_clicked(move |_|{
+        playback_switcher.connect_clicked(move |_| {
             Self::update_view(View::Playback, builder.clone(), menu_builder.clone());
         });
 
@@ -124,7 +124,7 @@ impl Window {
         let add_switcher: gtk::RadioButton = self.builder.get_object("add_switcher").unwrap();
         let builder = self.builder.clone();
         let menu_builder = self.menu_builder.clone();
-        add_switcher.connect_clicked(move |_|{
+        add_switcher.connect_clicked(move |_| {
             Self::update_view(View::Search, builder.clone(), menu_builder.clone());
         });
     }
@@ -136,16 +136,16 @@ impl Window {
         notification.show(&overlay);
     }
 
-    pub fn set_sidebar_view(&self, view: SidebarView){
+    pub fn set_sidebar_view(&self, view: SidebarView) {
         let sidebar_stack: gtk::Stack = self.builder.get_object("sidebar_stack").unwrap();
 
-        match view{
+        match view {
             SidebarView::Playback => sidebar_stack.set_visible_child_name("playback"),
-            SidebarView::NoPlayback => sidebar_stack.set_visible_child_name("no-playback")
+            SidebarView::NoPlayback => sidebar_stack.set_visible_child_name("no-playback"),
         }
     }
 
-    fn update_view(view: View, builder: gtk::Builder, menu_builder: gtk::Builder){
+    fn update_view(view: View, builder: gtk::Builder, menu_builder: gtk::Builder) {
         let leaflet: libhandy::Leaflet = builder.get_object("content").unwrap();
         let header_leaflet: libhandy::Leaflet = builder.get_object("header_leaflet").unwrap();
         let sorting_mbutton: gtk::ModelButton = menu_builder.get_object("sorting_mbutton").unwrap();
@@ -156,7 +156,7 @@ impl Window {
 
         // show or hide view specific buttons
         let library_mode = view == View::Library;
-        if !leaflet.get_property_folded(){
+        if !leaflet.get_property_folded() {
             add_button.set_visible(library_mode);
             back_button.set_visible(!library_mode);
         }
@@ -168,16 +168,16 @@ impl Window {
                 leaflet.set_visible_child_name("content");
                 header_leaflet.set_visible_child_name("content");
                 view_stack.set_visible_child_name("search");
-            },
+            }
             View::Library => {
                 leaflet.set_visible_child_name("content");
                 header_leaflet.set_visible_child_name("content");
                 view_stack.set_visible_child_name("library");
-            },
+            }
             View::Playback => {
                 header_leaflet.set_visible_child_name("playback");
                 leaflet.set_visible_child_name("playback");
-            },
+            }
         }
     }
 

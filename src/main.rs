@@ -4,15 +4,15 @@ extern crate log;
 extern crate quick_error;
 
 mod app;
+mod gstreamer_backend;
 mod library;
 mod player;
-mod gstreamer_backend;
 mod search;
+mod song;
 mod static_resource;
 mod station_model;
 mod widgets;
 mod window;
-mod song;
 
 use crate::app::App;
 use simplelog::*;

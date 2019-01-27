@@ -46,16 +46,16 @@ impl Song {
         }
     }
 
-    pub fn finish(&mut self){
+    pub fn finish(&mut self) {
         self.duration.stop();
     }
 
-    pub fn delete(&mut self){
+    pub fn delete(&mut self) {
         self.finish();
         // TODO: implement
     }
 
-    pub fn export(&self){
+    pub fn export(&self) {
         self.pipeline.start();
     }
 }

@@ -1,12 +1,12 @@
 use gtk::prelude::*;
 use rustio::{Client, StationSearch};
 
-use std::sync::mpsc::Sender;
 use std::cell::RefCell;
+use std::sync::mpsc::Sender;
 
+use crate::app::Action;
 use crate::widgets::station_listbox::StationListBox;
 use crate::widgets::station_row::ContentType;
-use crate::app::Action;
 
 pub struct Search {
     pub widget: gtk::Box,
@@ -25,13 +25,18 @@ impl Search {
         let station_listbox = RefCell::new(StationListBox::new(sender.clone(), ContentType::Other));
         results_box.add(&station_listbox.borrow().widget);
 
-        let search = Self { widget, station_listbox, builder, sender };
+        let search = Self {
+            widget,
+            station_listbox,
+            builder,
+            sender,
+        };
 
         search.setup_signals();
         search
     }
 
-    pub fn search_for(&self, data: StationSearch){
+    pub fn search_for(&self, data: StationSearch) {
         debug!("search for: {:?}", data);
 
         let mut client = Client::new("http://www.radio-browser.info");
@@ -44,7 +49,7 @@ impl Search {
     fn setup_signals(&self) {
         let search_entry: gtk::SearchEntry = self.builder.get_object("search_entry").unwrap();
         let sender = self.sender.clone();
-        search_entry.connect_search_changed(move|entry|{
+        search_entry.connect_search_changed(move |entry| {
             let data = StationSearch::search_for_name(entry.get_text().unwrap(), false, 100);
             sender.send(Action::SearchFor(data)).unwrap();
         });

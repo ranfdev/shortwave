@@ -1,6 +1,6 @@
 use gtk::prelude::*;
-use rustio::Station;
 use libhandy::{Column, ColumnExt};
+use rustio::Station;
 
 use std::sync::mpsc::Sender;
 
