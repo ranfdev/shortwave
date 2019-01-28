@@ -113,7 +113,7 @@ impl SongsBackend {
             // set new current_song
             self.current_song = Some(song);
 
-            // ensure max history length. delete old songs
+            // ensure max history length. Delete old songs
             if self.song_history.len() > self.max_history{
                 self.song_history.pop().map(|mut song|{
                     song.delete();
@@ -126,6 +126,15 @@ impl SongsBackend {
 
     pub fn get_previous_song(&self) -> Option<&Song> {
         self.song_history.get(0)
+    }
+
+    pub fn delete_everything(&mut self){
+        self.discard_current_song();
+
+        for song in &mut self.song_history{
+            song.delete();
+        }
+        self.song_history.clear();
     }
 }
 
@@ -211,6 +220,11 @@ impl Player {
 
     pub fn set_volume(&self, volume: f64) {
         self.backend.lock().unwrap().set_volume(volume);
+    }
+
+    pub fn shutdown(&self){
+        self.set_playback(PlaybackState::Stopped);
+        self.songs_backend.borrow_mut().delete_everything();
     }
 
     fn parse_bus_message(message: &gstreamer::Message, player_widgets: Rc<PlayerWidgets>, mpris: Arc<MprisPlayer>, backend: Arc<Mutex<PlayerBackend>>, songs_backend: Rc<RefCell<SongsBackend>>) {
