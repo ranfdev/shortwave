@@ -78,6 +78,7 @@ pub struct SongsBackend {
     pub current_station: Option<Station>,
     pub current_song: Option<Song>,
     pub song_history: Vec<Song>,
+    pub max_history: usize,
 }
 
 impl SongsBackend {
@@ -85,11 +86,13 @@ impl SongsBackend {
         let current_station = None;
         let current_song = None;
         let song_history = Vec::new();
+        let max_history = 10;
 
         Self {
             current_station,
             current_song,
             song_history,
+            max_history,
         }
     }
 
@@ -109,6 +112,13 @@ impl SongsBackend {
 
             // set new current_song
             self.current_song = Some(song);
+
+            // ensure max history length. delete old songs
+            if self.song_history.len() > self.max_history{
+                self.song_history.pop().map(|mut song|{
+                    song.delete();
+                });
+            }
             return true;
         }
         false

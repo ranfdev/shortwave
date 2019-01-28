@@ -1,15 +1,14 @@
 use stopwatch::Stopwatch;
+use uuid::Uuid;
 
-use std::collections::hash_map::DefaultHasher;
 use std::fs;
-use std::hash::{Hash, Hasher};
 
 use crate::gstreamer_backend::ExportBackend;
 
 #[derive(Clone)]
 pub struct Song {
     pub title: String,
-    pub title_hash: String,
+    pub uuid: Uuid,
     pub path: String,
     pub duration: Stopwatch,
     pipeline: ExportBackend,
@@ -17,10 +16,9 @@ pub struct Song {
 
 impl Song {
     pub fn new(title: &str) -> Self {
-        let mut hasher = DefaultHasher::new();
-        title.hash(&mut hasher);
-        let title_hash = hasher.finish().to_string();
-        let path = format!("{}/{}.ogg", glib::get_user_cache_dir().unwrap().to_str().unwrap(), title_hash);
+        // generate uuid for song
+        let uuid = Uuid::new_v4();
+        let path = format!("{}/{}.ogg", glib::get_user_cache_dir().unwrap().to_str().unwrap(), uuid);
         let duration = Stopwatch::start_new();
 
         // remove special chars from title
@@ -38,9 +36,11 @@ impl Song {
         let export_path = format!("{}/{}.ogg", glib::get_user_special_dir(glib::UserDirectory::Music).unwrap().to_str().unwrap(), export_title);
         let pipeline = ExportBackend::new(&path, &export_path);
 
+        debug!("Cache song \"{}\" -> {}", title, path);
+
         Self {
             title: title.to_string(),
-            title_hash,
+            uuid,
             path,
             duration,
             pipeline,
