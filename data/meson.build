@@ -1,9 +1,9 @@
 subdir('icons')
 
-# desktop file
+# Desktop file
 desktop_conf = configuration_data()
 desktop_conf.set('icon', application_id)
-i18n.merge_file ('desktop-file',
+desktop_file = i18n.merge_file (
   type: 'desktop',
   input: configure_file(
     input: files('de.haeckerfelix.Shortwave.desktop.in.in'),
@@ -15,11 +15,22 @@ i18n.merge_file ('desktop-file',
   install: true,
   install_dir: join_paths (datadir, 'applications')
 )
+# Validate Desktop file
+desktop_file_validate = find_program('desktop-file-validate', required: false)
+if desktop_file_validate.found()
+  test(
+    'validate-desktop',
+    desktop_file_validate,
+    args: [
+      desktop_file.full_path()
+    ]
+  )
+endif
 
-# appdata
+# Appdata
 appdata_conf = configuration_data()
 appdata_conf.set('appid', application_id)
-i18n.merge_file ('appdata-file',
+appdata_file = i18n.merge_file (
   input: configure_file(
     input: files('de.haeckerfelix.Shortwave.appdata.xml.in.in'),
     output: 'de.haeckerfelix.Shortwave.appdata.xml.in',
@@ -30,6 +41,16 @@ i18n.merge_file ('appdata-file',
   install: true,
   install_dir: join_paths (datadir, 'metainfo')
 )
+# Validate Appdata
+appstream_util = find_program('appstream-util', required: false)
+if appstream_util.found()
+  test(
+    'validate-appdata', appstream_util,
+    args: [
+      'validate-relax', '--nonet', appdata_file.full_path()
+    ]
+  )
+endif
 
 # dbus service
 service_conf = configuration_data()
