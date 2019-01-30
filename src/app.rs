@@ -247,7 +247,7 @@ impl App {
         dialog.set_program_name(info.app_name.as_str());
         dialog.set_logo_icon_name(info.app_id.as_str());
         dialog.set_comments("A web radio client");
-        dialog.set_copyright("© 2018 Felix Häcker");
+        dialog.set_copyright("© 2019 Felix Häcker");
         dialog.set_license_type(gtk::License::Gpl30);
         dialog.set_version(info.version.as_str());
         dialog.set_transient_for(&window);
