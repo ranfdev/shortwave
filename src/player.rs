@@ -12,143 +12,12 @@ use std::thread;
 use crate::app::Action;
 use crate::gstreamer_backend::PlayerBackend;
 use crate::song::Song;
-use crate::widgets::song_row::SongRow;
+use crate::widgets::song_listbox::SongListBox;
 
 pub enum PlaybackState {
     Playing,
     Stopped,
     Loading,
-}
-
-struct PlayerWidgets {
-    pub title_label: gtk::Label,
-    pub subtitle_label: gtk::Label,
-    pub subtitle_revealer: gtk::Revealer,
-    pub playback_button_stack: gtk::Stack,
-    pub start_playback_button: gtk::Button,
-    pub stop_playback_button: gtk::Button,
-    pub volume_button: gtk::VolumeButton,
-}
-
-impl PlayerWidgets {
-    pub fn new(builder: gtk::Builder) -> Self {
-        let title_label: gtk::Label = builder.get_object("title_label").unwrap();
-        let subtitle_label: gtk::Label = builder.get_object("subtitle_label").unwrap();
-        let subtitle_revealer: gtk::Revealer = builder.get_object("subtitle_revealer").unwrap();
-        let playback_button_stack: gtk::Stack = builder.get_object("playback_button_stack").unwrap();
-        let start_playback_button: gtk::Button = builder.get_object("start_playback_button").unwrap();
-        let stop_playback_button: gtk::Button = builder.get_object("stop_playback_button").unwrap();
-        let volume_button: gtk::VolumeButton = builder.get_object("volume_button").unwrap();
-
-        PlayerWidgets {
-            title_label,
-            subtitle_label,
-            subtitle_revealer,
-            playback_button_stack,
-            start_playback_button,
-            stop_playback_button,
-            volume_button,
-        }
-    }
-
-    pub fn reset(&self) {
-        self.title_label.set_text("");
-        self.subtitle_label.set_text("");
-        self.subtitle_revealer.set_reveal_child(false);
-    }
-
-    pub fn set_title(&self, title: &str) {
-        if title != "" {
-            self.subtitle_label.set_text(title);
-            self.subtitle_revealer.set_reveal_child(true);
-        } else {
-            self.subtitle_label.set_text("");
-            self.subtitle_revealer.set_reveal_child(false);
-        }
-    }
-}
-
-pub struct SongHistory {
-    pub current_station: Option<Station>,
-    pub current_song: Option<Song>,
-    pub history: Vec<Song>,
-    pub max_history: usize,
-
-
-    song_rows: Vec<SongRow>,
-    last_played_listbox: gtk::ListBox, //TODO: rename
-    recording_box: gtk::Box,
-}
-
-impl SongHistory {
-    pub fn new(builder: gtk::Builder) -> Self {
-        let current_station = None;
-        let current_song = None;
-        let history = Vec::new();
-        let max_history = 10;
-
-        let song_rows = Vec::new();
-        let last_played_listbox: gtk::ListBox = builder.get_object("last_played_listbox").unwrap();
-        let recording_box: gtk::Box = builder.get_object("recording_box").unwrap();
-
-        Self {
-            current_station,
-            current_song,
-            history,
-            max_history,
-            song_rows,
-            last_played_listbox,
-            recording_box,
-        }
-    }
-
-    pub fn discard_current_song(&mut self) {
-        self.current_song.take().map(|mut song| song.delete());
-    }
-
-    // returns 'true' if song have changed in comparsion to old song
-    pub fn set_new_song(&mut self, song: Song) -> bool {
-        // check if song have changed
-        if self.current_song != Some(song.clone()) {
-            // save current song, and insert it into the history
-            self.current_song.take().map(|mut s| {
-                s.finish();
-                let row = SongRow::new(s.clone());
-
-                self.last_played_listbox.insert(&row.widget, 0);
-                self.song_rows.insert(0, row);
-                self.history.insert(0, s);
-
-                self.recording_box.set_visible(true);
-            });
-
-            // set new current_song
-            self.current_song = Some(song);
-
-            // ensure max history length. Delete old songs
-            if self.history.len() > self.max_history{
-                self.history.pop().map(|mut song|{
-                    song.delete();
-                    self.last_played_listbox.remove(&self.song_rows.pop().unwrap().widget);
-                });
-            }
-            return true;
-        }
-        false
-    }
-
-    pub fn get_previous_song(&self) -> Option<&Song> {
-        self.history.get(0)
-    }
-
-    pub fn delete_everything(&mut self){
-        self.discard_current_song();
-
-        for song in &mut self.history{
-            song.delete();
-        }
-        self.history.clear();
-    }
 }
 
 pub struct Player {
@@ -157,7 +26,7 @@ pub struct Player {
 
     backend: Arc<Mutex<PlayerBackend>>,
     mpris: Arc<MprisPlayer>,
-    song_history: Rc<RefCell<SongHistory>>,
+    song_listbox: Rc<RefCell<SongListBox>>,
 
     sender: Sender<Action>,
 }
@@ -168,7 +37,8 @@ impl Player {
         let widget: gtk::Box = builder.get_object("player").unwrap();
         let player_widgets = Rc::new(PlayerWidgets::new(builder.clone()));
         let backend = Arc::new(Mutex::new(PlayerBackend::new()));
-        let song_history = Rc::new(RefCell::new(SongHistory::new(builder.clone())));
+        let song_listbox = Rc::new(RefCell::new(SongListBox::new()));
+        widget.add(&song_listbox.borrow().widget);
 
         let mpris = MprisPlayer::new("Shortwave".to_string(), "Shortwave".to_string(), "de.haeckerfelix.Shortwave".to_string());
         mpris.set_can_raise(true);
@@ -182,7 +52,7 @@ impl Player {
             player_widgets,
             backend,
             mpris,
-            song_history,
+            song_listbox,
             sender,
         };
 
@@ -192,11 +62,11 @@ impl Player {
 
     pub fn set_station(&self, station: Station) {
         // discard old song, because it's not completely recorded
-        self.song_history.borrow_mut().discard_current_song();
+        self.song_listbox.borrow_mut().discard_current_song();
 
         self.player_widgets.reset();
         self.player_widgets.title_label.set_text(&station.name);
-        self.song_history.borrow_mut().current_station = Some(station.clone());
+        self.song_listbox.borrow_mut().current_station = Some(station.clone());
         self.set_playback(PlaybackState::Stopped);
 
         // set mpris metadata
@@ -235,19 +105,19 @@ impl Player {
         self.backend.lock().unwrap().set_volume(volume);
     }
 
-    pub fn shutdown(&self){
+    pub fn shutdown(&self) {
         self.set_playback(PlaybackState::Stopped);
-        self.song_history.borrow_mut().delete_everything();
+        self.song_listbox.borrow_mut().delete_everything();
     }
 
-    fn parse_bus_message(message: &gstreamer::Message, player_widgets: Rc<PlayerWidgets>, mpris: Arc<MprisPlayer>, backend: Arc<Mutex<PlayerBackend>>, song_history: Rc<RefCell<SongHistory>>) {
+    fn parse_bus_message(message: &gstreamer::Message, player_widgets: Rc<PlayerWidgets>, mpris: Arc<MprisPlayer>, backend: Arc<Mutex<PlayerBackend>>, song_listbox: Rc<RefCell<SongListBox>>) {
         match message.view() {
             gstreamer::MessageView::Tag(tag) => {
                 tag.get_tags().get::<gstreamer::tags::Title>().map(|t| {
                     let new_song = Song::new(t.get().unwrap());
 
                     // Check if song have changed
-                    if song_history.borrow_mut().set_new_song(new_song.clone()) {
+                    if song_listbox.borrow_mut().set_new_song(new_song.clone()) {
                         // set new song
                         debug!("New song: {:?}", new_song.clone().title);
                         player_widgets.set_title(&new_song.clone().title);
@@ -293,10 +163,10 @@ impl Player {
                     if let gstreamer::MessageView::Eos(_) = &message.view() {
                         debug!("muxsinkbin got EOS...");
 
-                        if song_history.borrow().current_song.is_some() {
+                        if song_listbox.borrow().current_song.is_some() {
                             // Old song got saved correctly (cause we got the EOS message),
                             // so we can start with the new song now
-                            let song = song_history.borrow_mut().current_song.clone().unwrap();
+                            let song = song_listbox.borrow_mut().current_song.clone().unwrap();
                             debug!("Cache song \"{}\" under \"{}\"", song.title, song.path);
                             backend.lock().unwrap().new_filesink_location(&song.path);
                         } else {
@@ -350,16 +220,64 @@ impl Player {
         let bus = self.backend.lock().unwrap().get_pipeline_bus();
         let player_widgets = self.player_widgets.clone();
         let backend = self.backend.clone();
-        let song_history = self.song_history.clone();
+        let song_listbox = self.song_listbox.clone();
         let mpris = self.mpris.clone();
         gtk::timeout_add(250, move || {
             while bus.have_pending() {
                 bus.pop().map(|message| {
                     //debug!("new message {:?}", message);
-                    Self::parse_bus_message(&message, player_widgets.clone(), mpris.clone(), backend.clone(), song_history.clone());
+                    Self::parse_bus_message(&message, player_widgets.clone(), mpris.clone(), backend.clone(), song_listbox.clone());
                 });
             }
             Continue(true)
         });
+    }
+}
+
+pub struct PlayerWidgets {
+    pub title_label: gtk::Label,
+    pub subtitle_label: gtk::Label,
+    pub subtitle_revealer: gtk::Revealer,
+    pub playback_button_stack: gtk::Stack,
+    pub start_playback_button: gtk::Button,
+    pub stop_playback_button: gtk::Button,
+    pub volume_button: gtk::VolumeButton,
+}
+
+impl PlayerWidgets {
+    pub fn new(builder: gtk::Builder) -> Self {
+        let title_label: gtk::Label = builder.get_object("title_label").unwrap();
+        let subtitle_label: gtk::Label = builder.get_object("subtitle_label").unwrap();
+        let subtitle_revealer: gtk::Revealer = builder.get_object("subtitle_revealer").unwrap();
+        let playback_button_stack: gtk::Stack = builder.get_object("playback_button_stack").unwrap();
+        let start_playback_button: gtk::Button = builder.get_object("start_playback_button").unwrap();
+        let stop_playback_button: gtk::Button = builder.get_object("stop_playback_button").unwrap();
+        let volume_button: gtk::VolumeButton = builder.get_object("volume_button").unwrap();
+
+        PlayerWidgets {
+            title_label,
+            subtitle_label,
+            subtitle_revealer,
+            playback_button_stack,
+            start_playback_button,
+            stop_playback_button,
+            volume_button,
+        }
+    }
+
+    pub fn reset(&self) {
+        self.title_label.set_text("");
+        self.subtitle_label.set_text("");
+        self.subtitle_revealer.set_reveal_child(false);
+    }
+
+    pub fn set_title(&self, title: &str) {
+        if title != "" {
+            self.subtitle_label.set_text(title);
+            self.subtitle_revealer.set_reveal_child(true);
+        } else {
+            self.subtitle_label.set_text("");
+            self.subtitle_revealer.set_reveal_child(false);
+        }
     }
 }

@@ -217,7 +217,7 @@ audio-volume-medium-symbolic</property>
       </packing>
     </child>
     <child>
-      <object class="GtkBox" id="recording_box">
+      <object class="GtkBox" id="songs_box">
         <property name="can_focus">False</property>
         <property name="no_show_all">True</property>
         <property name="margin_top">6</property>
@@ -245,7 +245,7 @@ audio-volume-medium-symbolic</property>
             <property name="can_focus">False</property>
             <property name="label_xalign">0</property>
             <child>
-              <object class="GtkListBox" id="last_played_listbox">
+              <object class="GtkListBox" id="songs_listbox">
                 <property name="visible">True</property>
                 <property name="can_focus">False</property>
               </object>
