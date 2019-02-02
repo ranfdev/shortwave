@@ -11,7 +11,7 @@ glib = "0.6.1"
 gdk = "0.9.0"
 log = "0.4"
 simplelog = "0.5"
-rustio = { git="https://github.com/haecker-felix/Rustio.git" }
+rustio = { git="https://gitlab.gnome.org/haecker-felix/Rustio.git" }
 gstreamer = "0.12"
 gstreamer-pbutils = "0.12"
 mpris-player = "0.1"
