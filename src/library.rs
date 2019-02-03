@@ -116,11 +116,11 @@ impl Library {
             let row = result_row.unwrap();
             let station_id: u32 = row.get(0);
 
-            match client.get_station_by_id(station_id)?{
+            match client.get_station_by_id(station_id)? {
                 Some(station) => {
                     info!("Found Station: {}", station.name);
                     result.insert(0, station);
-                },
+                }
                 None => warn!("Could not fetch station with ID {}", station_id),
             }
         }
