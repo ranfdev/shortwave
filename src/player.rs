@@ -183,6 +183,13 @@ impl Player {
                     }
                 }
             }
+            gstreamer::MessageView::Error(err) => {
+                let msg = err.get_error().to_string();
+                warn!("Gstreamer Error: {:?}", msg);
+                for con in &*controller {
+                    con.set_playback_state(&PlaybackState::Failure(msg.clone()));
+                }
+            }
             _ => (),
         };
     }

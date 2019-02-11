@@ -18,6 +18,7 @@ pub struct GtkController {
     start_playback_button: gtk::Button,
     stop_playback_button: gtk::Button,
     volume_button: gtk::VolumeButton,
+    error_label: gtk::Label,
 }
 
 impl GtkController {
@@ -32,6 +33,7 @@ impl GtkController {
         let start_playback_button: gtk::Button = builder.get_object("start_playback_button").unwrap();
         let stop_playback_button: gtk::Button = builder.get_object("stop_playback_button").unwrap();
         let volume_button: gtk::VolumeButton = builder.get_object("volume_button").unwrap();
+        let error_label: gtk::Label = builder.get_object("error_label").unwrap();
 
         let controller = Self {
             widget,
@@ -43,6 +45,7 @@ impl GtkController {
             start_playback_button,
             stop_playback_button,
             volume_button,
+            error_label,
         };
 
         controller.connect_signals();
@@ -73,6 +76,9 @@ impl GtkController {
 impl Controller for GtkController {
     fn set_station(&self, station: Station) {
         self.title_label.set_text(&station.name);
+
+        // reset error text
+        self.error_label.set_text(" ");
     }
 
     fn set_playback_state(&self, playback_state: &PlaybackState) {
@@ -80,7 +86,12 @@ impl Controller for GtkController {
             PlaybackState::Playing => self.playback_button_stack.set_visible_child_name("stop_playback"),
             PlaybackState::Stopped => self.playback_button_stack.set_visible_child_name("start_playback"),
             PlaybackState::Loading => self.playback_button_stack.set_visible_child_name("loading"),
-            _ => (),
+            PlaybackState::Failure(msg) => {
+                self.playback_button_stack.set_visible_child_name("error");
+                let mut text = self.error_label.get_text().unwrap();
+                text = text + " " + msg;
+                self.error_label.set_text(&text);
+            },
         };
     }
 
