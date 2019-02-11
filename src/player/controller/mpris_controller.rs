@@ -1,15 +1,15 @@
-use rustio::Station;
 use mpris_player::{Metadata, MprisPlayer, OrgMprisMediaPlayer2Player, PlaybackStatus};
+use rustio::Station;
 
+use std::cell::Cell;
 use std::sync::mpsc::Sender;
 use std::sync::Arc;
-use std::cell::Cell;
 
 use crate::app::Action;
-use crate::player::PlaybackState;
 use crate::player::Controller;
+use crate::player::PlaybackState;
 
-pub struct MprisController{
+pub struct MprisController {
     sender: Sender<Action>,
     mpris: Arc<MprisPlayer>,
 
@@ -17,8 +17,8 @@ pub struct MprisController{
     station: Cell<Option<Station>>,
 }
 
-impl MprisController{
-    pub fn new(sender: Sender<Action>) -> Self{
+impl MprisController {
+    pub fn new(sender: Sender<Action>) -> Self {
         let mpris = MprisPlayer::new("Shortwave".to_string(), "Shortwave".to_string(), "de.haeckerfelix.Shortwave".to_string());
         mpris.set_can_raise(true);
         mpris.set_can_play(false);
@@ -26,7 +26,7 @@ impl MprisController{
         mpris.set_can_set_fullscreen(false);
         mpris.set_can_pause(true);
 
-        let controller = Self{
+        let controller = Self {
             sender,
             mpris,
             song_title: Cell::new(None),
@@ -37,7 +37,7 @@ impl MprisController{
         controller
     }
 
-    fn update_metadata(&self){
+    fn update_metadata(&self) {
         let mut metadata = Metadata::new();
 
         let station = self.station.take();
@@ -57,7 +57,7 @@ impl MprisController{
         self.mpris.set_metadata(metadata);
     }
 
-    fn connect_signals(&self){
+    fn connect_signals(&self) {
         // mpris raise
         let sender = self.sender.clone();
         self.mpris.connect_raise(move || {
@@ -95,7 +95,7 @@ impl MprisController{
     }
 }
 
-impl Controller for MprisController{
+impl Controller for MprisController {
     fn set_station(&self, station: Station) {
         self.station.set(Some(station));
         self.update_metadata();
@@ -112,13 +112,12 @@ impl Controller for MprisController{
         };
     }
 
-    fn set_volume(&self, _volume: f64){
+    fn set_volume(&self, _volume: f64) {
         debug!("mpris: setting volume is not supported");
     }
 
-    fn set_song_title(&self, title: &str){
+    fn set_song_title(&self, title: &str) {
         self.song_title.set(Some(title.to_string()));
         self.update_metadata();
     }
-
 }

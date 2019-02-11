@@ -4,10 +4,10 @@ use rustio::Station;
 use std::sync::mpsc::Sender;
 
 use crate::app::Action;
-use crate::player::PlaybackState;
 use crate::player::Controller;
+use crate::player::PlaybackState;
 
-pub struct GtkController{
+pub struct GtkController {
     pub widget: gtk::Box,
     sender: Sender<Action>,
 
@@ -20,8 +20,8 @@ pub struct GtkController{
     volume_button: gtk::VolumeButton,
 }
 
-impl GtkController{
-    pub fn new(sender: Sender<Action>) -> Self{
+impl GtkController {
+    pub fn new(sender: Sender<Action>) -> Self {
         let builder = gtk::Builder::new_from_resource("/de/haeckerfelix/Shortwave/gtk/gtk_controller.ui");
 
         let widget: gtk::Box = builder.get_object("gtk_controller").unwrap();
@@ -33,7 +33,7 @@ impl GtkController{
         let stop_playback_button: gtk::Button = builder.get_object("stop_playback_button").unwrap();
         let volume_button: gtk::VolumeButton = builder.get_object("volume_button").unwrap();
 
-        let controller = Self{
+        let controller = Self {
             widget,
             sender,
             title_label,
@@ -49,7 +49,7 @@ impl GtkController{
         controller
     }
 
-    fn connect_signals(&self){
+    fn connect_signals(&self) {
         // start_playback_button
         let sender = self.sender.clone();
         self.start_playback_button.connect_clicked(move |_| {
@@ -70,7 +70,7 @@ impl GtkController{
     }
 }
 
-impl Controller for GtkController{
+impl Controller for GtkController {
     fn set_station(&self, station: Station) {
         self.title_label.set_text(&station.name);
     }
@@ -84,11 +84,11 @@ impl Controller for GtkController{
         };
     }
 
-    fn set_volume(&self, volume: f64){
+    fn set_volume(&self, volume: f64) {
         self.volume_button.set_value(volume);
     }
 
-    fn set_song_title(&self, title: &str){
+    fn set_song_title(&self, title: &str) {
         if title != "" {
             self.subtitle_label.set_text(title);
             self.subtitle_revealer.set_reveal_child(true);
@@ -97,5 +97,4 @@ impl Controller for GtkController{
             self.subtitle_revealer.set_reveal_child(false);
         }
     }
-
 }

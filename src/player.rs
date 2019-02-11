@@ -10,10 +10,10 @@ use std::thread;
 
 use crate::app::Action;
 use crate::gstreamer_backend::PlayerBackend;
-use crate::song::Song;
-use crate::widgets::song_listbox::SongListBox;
 use crate::player::controller::GtkController;
 use crate::player::controller::MprisController;
+use crate::song::Song;
+use crate::widgets::song_listbox::SongListBox;
 
 ////////////////////////////////////////////////////////////////////////////////////////////
 //                                                                                        //
@@ -38,12 +38,11 @@ use crate::player::controller::MprisController;
 //                                                                                        //
 ////////////////////////////////////////////////////////////////////////////////////////////
 
-
 mod controller;
 mod playback_state;
 
-pub use playback_state::PlaybackState as PlaybackState;
-pub use controller::Controller as Controller;
+pub use controller::Controller;
+pub use playback_state::PlaybackState;
 
 pub struct Player {
     pub widget: gtk::Box,
@@ -93,7 +92,7 @@ impl Player {
         self.song_listbox.borrow_mut().current_station = Some(station.clone());
         self.set_playback(PlaybackState::Stopped);
 
-        for con in &*self.controller{
+        for con in &*self.controller {
             con.set_station(station.clone());
         }
 
@@ -115,7 +114,7 @@ impl Player {
                 let _ = self.backend.lock().unwrap().set_state(gstreamer::State::Null);
 
                 // We need to set it manually, because we don't receive a gst message when the playback stops
-                for con in &*self.controller{
+                for con in &*self.controller {
                     con.set_playback_state(&PlaybackState::Stopped);
                 }
             }
@@ -142,7 +141,7 @@ impl Player {
                     if song_listbox.borrow_mut().set_new_song(new_song.clone()) {
                         // set new song
                         debug!("New song: {:?}", new_song.clone().title);
-                        for con in &*controller{
+                        for con in &*controller {
                             con.set_song_title(new_song.clone().title.as_ref());
                         }
 
@@ -160,7 +159,7 @@ impl Player {
                     _ => PlaybackState::Stopped,
                 };
 
-                for con in &*controller{
+                for con in &*controller {
                     con.set_playback_state(&playback_state);
                 }
             }
