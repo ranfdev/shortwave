@@ -91,7 +91,7 @@ impl Controller for GtkController {
                 let mut text = self.error_label.get_text().unwrap();
                 text = text + " " + msg;
                 self.error_label.set_text(&text);
-            },
+            }
         };
     }
 

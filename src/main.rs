@@ -4,7 +4,6 @@ extern crate log;
 extern crate quick_error;
 
 mod app;
-mod gstreamer_backend;
 mod library;
 mod player;
 mod search;

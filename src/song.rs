@@ -3,7 +3,7 @@ use uuid::Uuid;
 
 use std::fs;
 
-use crate::gstreamer_backend::ExportBackend;
+use crate::player::gstreamer_backend::ExportBackend;
 
 #[derive(Clone)]
 pub struct Song {

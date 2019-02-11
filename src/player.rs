@@ -9,9 +9,7 @@ use std::sync::{Arc, Mutex};
 use std::thread;
 
 use crate::app::Action;
-use crate::gstreamer_backend::PlayerBackend;
-use crate::player::controller::GtkController;
-use crate::player::controller::MprisController;
+use crate::player::controller::{GtkController, MprisController};
 use crate::song::Song;
 use crate::widgets::song_listbox::SongListBox;
 
@@ -39,9 +37,11 @@ use crate::widgets::song_listbox::SongListBox;
 ////////////////////////////////////////////////////////////////////////////////////////////
 
 mod controller;
+pub mod gstreamer_backend;
 mod playback_state;
 
 pub use controller::Controller;
+pub use gstreamer_backend::PlayerBackend;
 pub use playback_state::PlaybackState;
 
 pub struct Player {
