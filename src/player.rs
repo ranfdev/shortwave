@@ -1,6 +1,5 @@
 use gstreamer::prelude::*;
 use gtk::prelude::*;
-use mpris_player::{Metadata, MprisPlayer, OrgMprisMediaPlayer2Player, PlaybackStatus};
 use rustio::{Client, Station};
 
 use std::cell::RefCell;
@@ -13,47 +12,74 @@ use crate::app::Action;
 use crate::gstreamer_backend::PlayerBackend;
 use crate::song::Song;
 use crate::widgets::song_listbox::SongListBox;
+use crate::player::controller::GtkController;
+use crate::player::controller::MprisController;
 
-pub enum PlaybackState {
-    Playing,
-    Stopped,
-    Loading,
-}
+////////////////////////////////////////////////////////////////////////////////////////////
+//                                                                                        //
+//  A small overview of the player/gstreamer program structure  :)                        //
+//                                                                                        //
+//   ----------------------    -----------------    ---------------                       //
+//  | ChromecastController |  | MprisController |  | GtkController |                      //
+//   ----------------------    -----------------    ---------------                       //
+//            |                        |                   |                              //
+//            ----------------------------------------------                              //
+//                                     |                                                  //
+//                              ------------                          --------------      //
+//                             | Controller |                        | AudioBackend |     //
+//                              ------------                          --------------      //
+//                                     |      -------------------           |             //
+//                                     |     | Gstreamer Backend |----------|             //
+//	                                   |      -------------------           |             //
+//                                     |        |                     ---------------     //
+//                                    -----------                    | ExportBackend |    //
+//                                   |  Player   |                    ---------------     //
+//                                    -----------                                         //
+//                                                                                        //
+////////////////////////////////////////////////////////////////////////////////////////////
+
+
+mod controller;
+mod playback_state;
+
+pub use playback_state::PlaybackState as PlaybackState;
+pub use controller::Controller as Controller;
 
 pub struct Player {
     pub widget: gtk::Box,
-    player_widgets: Rc<PlayerWidgets>,
+    controller: Rc<Vec<Box<Controller>>>,
 
     backend: Arc<Mutex<PlayerBackend>>,
-    mpris: Arc<MprisPlayer>,
     song_listbox: Rc<RefCell<SongListBox>>,
-
-    sender: Sender<Action>,
 }
 
 impl Player {
     pub fn new(sender: Sender<Action>) -> Self {
         let builder = gtk::Builder::new_from_resource("/de/haeckerfelix/Shortwave/gtk/player.ui");
         let widget: gtk::Box = builder.get_object("player").unwrap();
-        let player_widgets = Rc::new(PlayerWidgets::new(builder.clone()));
         let backend = Arc::new(Mutex::new(PlayerBackend::new()));
         let song_listbox = Rc::new(RefCell::new(SongListBox::new()));
         widget.add(&song_listbox.borrow().widget);
 
-        let mpris = MprisPlayer::new("Shortwave".to_string(), "Shortwave".to_string(), "de.haeckerfelix.Shortwave".to_string());
-        mpris.set_can_raise(true);
-        mpris.set_can_play(false);
-        mpris.set_can_seek(false);
-        mpris.set_can_set_fullscreen(false);
-        mpris.set_can_pause(true);
+        let mut controller: Vec<Box<Controller>> = Vec::new();
+
+        // Gtk Controller
+        let gtk_controller = GtkController::new(sender.clone());
+        let controller_box: gtk::Box = builder.get_object("controller_box").unwrap();
+        controller_box.add(&gtk_controller.widget);
+        controller.push(Box::new(gtk_controller));
+
+        // Mpris Controller
+        let mpris_controller = MprisController::new(sender.clone());
+        controller.push(Box::new(mpris_controller));
+
+        let controller: Rc<Vec<Box<Controller>>> = Rc::new(controller);
 
         let player = Self {
             widget,
-            player_widgets,
+            controller,
             backend,
-            mpris,
             song_listbox,
-            sender,
         };
 
         player.setup_signals();
@@ -64,17 +90,12 @@ impl Player {
         // discard old song, because it's not completely recorded
         self.song_listbox.borrow_mut().discard_current_song();
 
-        self.player_widgets.reset();
-        self.player_widgets.title_label.set_text(&station.name);
         self.song_listbox.borrow_mut().current_station = Some(station.clone());
         self.set_playback(PlaybackState::Stopped);
 
-        // set mpris metadata
-        let mut metadata = Metadata::new();
-        metadata.art_url = Some(station.clone().favicon);
-        metadata.artist = Some(vec![station.clone().name]);
-        self.mpris.set_metadata(metadata);
-        self.mpris.set_can_play(true);
+        for con in &*self.controller{
+            con.set_station(station.clone());
+        }
 
         let backend = self.backend.clone();
         thread::spawn(move || {
@@ -94,8 +115,9 @@ impl Player {
                 let _ = self.backend.lock().unwrap().set_state(gstreamer::State::Null);
 
                 // We need to set it manually, because we don't receive a gst message when the playback stops
-                self.player_widgets.playback_button_stack.set_visible_child_name("start_playback");
-                self.mpris.set_playback_status(PlaybackStatus::Stopped);
+                for con in &*self.controller{
+                    con.set_playback_state(&PlaybackState::Stopped);
+                }
             }
             _ => (),
         };
@@ -110,7 +132,7 @@ impl Player {
         self.song_listbox.borrow_mut().delete_everything();
     }
 
-    fn parse_bus_message(message: &gstreamer::Message, player_widgets: Rc<PlayerWidgets>, mpris: Arc<MprisPlayer>, backend: Arc<Mutex<PlayerBackend>>, song_listbox: Rc<RefCell<SongListBox>>) {
+    fn parse_bus_message(message: &gstreamer::Message, controller: Rc<Vec<Box<Controller>>>, backend: Arc<Mutex<PlayerBackend>>, song_listbox: Rc<RefCell<SongListBox>>) {
         match message.view() {
             gstreamer::MessageView::Tag(tag) => {
                 tag.get_tags().get::<gstreamer::tags::Title>().map(|t| {
@@ -120,12 +142,9 @@ impl Player {
                     if song_listbox.borrow_mut().set_new_song(new_song.clone()) {
                         // set new song
                         debug!("New song: {:?}", new_song.clone().title);
-                        player_widgets.set_title(&new_song.clone().title);
-
-                        // TODO: this would override the artist/art_url field. Needs to be fixed at mpris_player
-                        // let mut metadata = Metadata::new();
-                        // metadata.title = Some(title.get().unwrap().to_string());
-                        // mpris.set_metadata(metadata);
+                        for con in &*controller{
+                            con.set_song_title(new_song.clone().title.as_ref());
+                        }
 
                         debug!("Block the dataflow ...");
                         backend.lock().unwrap().block_dataflow();
@@ -133,7 +152,7 @@ impl Player {
                 });
             }
             gstreamer::MessageView::StateChanged(sc) => {
-                debug!("playback state changed: {:?}", sc.get_current());
+                debug!("Playback state changed: {:?}", sc.get_current());
                 let playback_state = match sc.get_current() {
                     gstreamer::State::Playing => PlaybackState::Playing,
                     gstreamer::State::Paused => PlaybackState::Loading,
@@ -141,20 +160,9 @@ impl Player {
                     _ => PlaybackState::Stopped,
                 };
 
-                match playback_state {
-                    PlaybackState::Playing => {
-                        player_widgets.playback_button_stack.set_visible_child_name("stop_playback");
-                        mpris.set_playback_status(PlaybackStatus::Playing);
-                    }
-                    PlaybackState::Stopped => {
-                        player_widgets.playback_button_stack.set_visible_child_name("start_playback");
-                        mpris.set_playback_status(PlaybackStatus::Stopped);
-                    }
-                    PlaybackState::Loading => {
-                        player_widgets.playback_button_stack.set_visible_child_name("loading");
-                        mpris.set_playback_status(PlaybackStatus::Stopped);
-                    }
-                };
+                for con in &*controller{
+                    con.set_playback_state(&playback_state);
+                }
             }
             gstreamer::MessageView::Element(element) => {
                 let structure = element.get_structure().unwrap();
@@ -181,103 +189,28 @@ impl Player {
     }
 
     fn setup_signals(&self) {
-        // start_playback_button
-        let sender = self.sender.clone();
-        self.player_widgets.start_playback_button.connect_clicked(move |_| {
-            sender.send(Action::PlaybackStart).unwrap();
-        });
-
-        // stop_playback_button
-        let sender = self.sender.clone();
-        self.player_widgets.stop_playback_button.connect_clicked(move |_| {
-            sender.send(Action::PlaybackStop).unwrap();
-        });
-
-        // mpris raise
-        let sender = self.sender.clone();
-        self.mpris.connect_raise(move || {
-            sender.send(Action::ViewRaise).unwrap();
-        });
-
-        // mpris play / pause
-        let sender = self.sender.clone();
-        let mpris = self.mpris.clone();
-        self.mpris.connect_play_pause(move || {
-            match mpris.get_playback_status().unwrap().as_ref() {
-                "Paused" => sender.send(Action::PlaybackStart).unwrap(),
-                "Stopped" => sender.send(Action::PlaybackStart).unwrap(),
-                _ => sender.send(Action::PlaybackStop).unwrap(),
-            };
-        });
-
-        // volume button
-        let sender = self.sender.clone();
-        self.player_widgets.volume_button.connect_value_changed(move |_, value| {
-            sender.send(Action::PlaybackSetVolume(value)).unwrap();
-        });
+        // stream connect button
+        //let stream_address_entry = self.player_widgets.stream_address_entry.clone();
+        //self.player_widgets.stream_connect_button.connect_clicked(move |_| {
+        //    let address = stream_address_entry.get_text().unwrap();
+        //    debug!("Connect to {}", address);
+        //    let chromecast = Chromecast::new(&address);
+        //    let result = chromecast.search();
+        //});
 
         // new backend (pipeline) bus messages
         let bus = self.backend.lock().unwrap().get_pipeline_bus();
-        let player_widgets = self.player_widgets.clone();
+        let controller = self.controller.clone();
         let backend = self.backend.clone();
         let song_listbox = self.song_listbox.clone();
-        let mpris = self.mpris.clone();
         gtk::timeout_add(250, move || {
             while bus.have_pending() {
                 bus.pop().map(|message| {
                     //debug!("new message {:?}", message);
-                    Self::parse_bus_message(&message, player_widgets.clone(), mpris.clone(), backend.clone(), song_listbox.clone());
+                    Self::parse_bus_message(&message, controller.clone(), backend.clone(), song_listbox.clone());
                 });
             }
             Continue(true)
         });
-    }
-}
-
-pub struct PlayerWidgets {
-    pub title_label: gtk::Label,
-    pub subtitle_label: gtk::Label,
-    pub subtitle_revealer: gtk::Revealer,
-    pub playback_button_stack: gtk::Stack,
-    pub start_playback_button: gtk::Button,
-    pub stop_playback_button: gtk::Button,
-    pub volume_button: gtk::VolumeButton,
-}
-
-impl PlayerWidgets {
-    pub fn new(builder: gtk::Builder) -> Self {
-        let title_label: gtk::Label = builder.get_object("title_label").unwrap();
-        let subtitle_label: gtk::Label = builder.get_object("subtitle_label").unwrap();
-        let subtitle_revealer: gtk::Revealer = builder.get_object("subtitle_revealer").unwrap();
-        let playback_button_stack: gtk::Stack = builder.get_object("playback_button_stack").unwrap();
-        let start_playback_button: gtk::Button = builder.get_object("start_playback_button").unwrap();
-        let stop_playback_button: gtk::Button = builder.get_object("stop_playback_button").unwrap();
-        let volume_button: gtk::VolumeButton = builder.get_object("volume_button").unwrap();
-
-        PlayerWidgets {
-            title_label,
-            subtitle_label,
-            subtitle_revealer,
-            playback_button_stack,
-            start_playback_button,
-            stop_playback_button,
-            volume_button,
-        }
-    }
-
-    pub fn reset(&self) {
-        self.title_label.set_text("");
-        self.subtitle_label.set_text("");
-        self.subtitle_revealer.set_reveal_child(false);
-    }
-
-    pub fn set_title(&self, title: &str) {
-        if title != "" {
-            self.subtitle_label.set_text(title);
-            self.subtitle_revealer.set_reveal_child(true);
-        } else {
-            self.subtitle_label.set_text("");
-            self.subtitle_revealer.set_reveal_child(false);
-        }
     }
 }
