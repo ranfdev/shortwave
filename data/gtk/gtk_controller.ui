@@ -65,11 +65,24 @@
       </object>
     </child>
   </object>
+  <object class="GtkPopover" id="info_popover">
+    <property name="can_focus">False</property>
+    <child>
+      <object class="GtkBox" id="info_box">
+        <property name="visible">True</property>
+        <property name="can_focus">False</property>
+        <property name="border_width">6</property>
+        <property name="orientation">vertical</property>
+        <child>
+          <placeholder/>
+        </child>
+      </object>
+    </child>
+  </object>
   <object class="GtkBox" id="gtk_controller">
     <property name="visible">True</property>
     <property name="can_focus">False</property>
     <property name="orientation">vertical</property>
-    <property name="spacing">6</property>
     <child>
       <object class="GtkFrame">
         <property name="visible">True</property>
@@ -99,6 +112,7 @@
       <object class="GtkLabel" id="title_label">
         <property name="visible">True</property>
         <property name="can_focus">False</property>
+        <property name="margin_top">6</property>
         <property name="label" translatable="yes">label</property>
         <property name="justify">center</property>
         <property name="wrap">True</property>
@@ -136,6 +150,23 @@
       </packing>
     </child>
     <child>
+      <object class="GtkLabel" id="location_label">
+        <property name="visible">True</property>
+        <property name="can_focus">False</property>
+        <property name="margin_bottom">6</property>
+        <property name="label" translatable="yes">location</property>
+        <style>
+          <class name="dim-label"/>
+          <class name="small"/>
+        </style>
+      </object>
+      <packing>
+        <property name="expand">False</property>
+        <property name="fill">True</property>
+        <property name="position">3</property>
+      </packing>
+    </child>
+    <child>
       <object class="GtkBox">
         <property name="visible">True</property>
         <property name="can_focus">False</property>
@@ -143,18 +174,20 @@
         <property name="margin_top">6</property>
         <property name="homogeneous">True</property>
         <child>
-          <object class="GtkToggleButton" id="information_togglebutton">
+          <object class="GtkMenuButton">
             <property name="visible">True</property>
             <property name="can_focus">True</property>
             <property name="receives_default">True</property>
             <property name="halign">center</property>
             <property name="valign">center</property>
             <property name="relief">none</property>
+            <property name="popover">info_popover</property>
             <child>
               <object class="GtkImage">
                 <property name="visible">True</property>
                 <property name="can_focus">False</property>
-                <property name="icon_name">view-grid-symbolic</property>
+                <property name="valign">center</property>
+                <property name="icon_name">view-more-symbolic</property>
               </object>
             </child>
           </object>
@@ -240,6 +273,9 @@
                     <property name="icon_name">dialog-error-symbolic</property>
                   </object>
                 </child>
+                <style>
+                  <class name="destructive-action"/>
+                </style>
               </object>
               <packing>
                 <property name="name">error</property>

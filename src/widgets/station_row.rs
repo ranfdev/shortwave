@@ -4,6 +4,7 @@ use rustio::Station;
 use std::sync::mpsc::Sender;
 
 use crate::app::Action;
+use crate::widgets::station_infobox::StationInfobox;
 
 #[derive(Clone)]
 pub enum ContentType {
@@ -14,7 +15,6 @@ pub enum ContentType {
 pub struct StationRow {
     pub widget: gtk::ListBoxRow,
     station: Station,
-    content_type: ContentType,
 
     builder: gtk::Builder,
     sender: Sender<Action>,
@@ -25,41 +25,36 @@ impl StationRow {
         let builder = gtk::Builder::new_from_resource("/de/haeckerfelix/Shortwave/gtk/station_row.ui");
         let row: gtk::ListBoxRow = builder.get_object("station_row").unwrap();
 
+        // Set row information
+        let station_label: gtk::Label = builder.get_object("station_label").unwrap();
+        let location_label: gtk::Label = builder.get_object("location_label").unwrap();
+        let votes_label: gtk::Label = builder.get_object("votes_label").unwrap();
+        station_label.set_text(&station.name);
+        location_label.set_text(&format!("{} {}", station.country, station.state));
+        votes_label.set_text(&format!("{} Votes", station.votes));
+
+        // Station Info Box
+        let info = StationInfobox::new();
+        info.set_station(&station);
+        let info_box: gtk::Box = builder.get_object("info_box").unwrap();
+        info_box.add(&info.widget);
+
+        // Wether to show 'add' or 'remove' button
+        let library_action_stack: gtk::Stack = builder.get_object("library_action_stack").unwrap();
+        match content_type {
+            ContentType::Library => library_action_stack.set_visible_child_name("library-remove"),
+            ContentType::Other => library_action_stack.set_visible_child_name("library-add"),
+        }
+
         let stationrow = Self {
             widget: row,
             station,
-            content_type,
             builder,
             sender,
         };
 
         stationrow.setup_signals();
-        stationrow.setup_widget();
         stationrow
-    }
-
-    fn setup_widget(&self) {
-        let station_label: gtk::Label = self.builder.get_object("station_label").unwrap();
-        let votes_label: gtk::Label = self.builder.get_object("votes_label").unwrap();
-        let location_label: gtk::Label = self.builder.get_object("location_label").unwrap();
-        let codec_label: gtk::Label = self.builder.get_object("codec_label").unwrap();
-        let homepage_label: gtk::Label = self.builder.get_object("homepage_label").unwrap();
-        let tags_label: gtk::Label = self.builder.get_object("tags_label").unwrap();
-        let language_label: gtk::Label = self.builder.get_object("language_label").unwrap();
-        let library_action_stack: gtk::Stack = self.builder.get_object("library_action_stack").unwrap();
-
-        station_label.set_text(&self.station.name);
-        votes_label.set_text(&format!("{} Votes", self.station.votes));
-        location_label.set_text(&format!("{} {}", self.station.country, self.station.state));
-        codec_label.set_text(&self.station.codec);
-        homepage_label.set_markup(&format!("<a href=\"{}\">{}</a>", self.station.homepage, self.station.homepage));
-        tags_label.set_text(&self.station.tags);
-        language_label.set_text(&self.station.language);
-
-        match self.content_type {
-            ContentType::Library => library_action_stack.set_visible_child_name("library-remove"),
-            ContentType::Other => library_action_stack.set_visible_child_name("library-add"),
-        }
     }
 
     fn setup_signals(&self) {

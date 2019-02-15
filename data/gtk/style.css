@@ -19,6 +19,10 @@
 	background: @theme_bg_color;
 }
 
+.small {
+  font-size: smaller;
+}
+
 /* Original Author: Christopher Davis (https://gitlab.gnome.org/BrainBlasted/Trumpet/blob/a4c78543c970c7c998c4b3ef67d5df252048ce4c/res/stylesheet.css) */
 actionbar.bottombar > revealer > box {
   padding-top: 0px;
