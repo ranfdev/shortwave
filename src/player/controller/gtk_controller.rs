@@ -1,4 +1,5 @@
 use gtk::prelude::*;
+use libhandy::prelude::*;
 use rustio::Station;
 
 use std::sync::mpsc::Sender;
@@ -13,6 +14,7 @@ pub struct GtkController {
     sender: Sender<Action>,
 
     infobox: StationInfobox,
+    info_expander: libhandy::ExpanderRow,
     title_label: gtk::Label,
     subtitle_label: gtk::Label,
     subtitle_revealer: gtk::Revealer,
@@ -29,6 +31,7 @@ impl GtkController {
 
         let infobox = StationInfobox::new();
         let info_box: gtk::Box = builder.get_object("info_box").unwrap();
+        let info_expander: libhandy::ExpanderRow = builder.get_object("info_expander").unwrap();
         info_box.add(&infobox.widget);
 
         let widget: gtk::Box = builder.get_object("gtk_controller").unwrap();
@@ -45,6 +48,7 @@ impl GtkController {
             widget,
             sender,
             infobox,
+            info_expander,
             title_label,
             subtitle_label,
             subtitle_revealer,
@@ -83,6 +87,7 @@ impl GtkController {
 impl Controller for GtkController {
     fn set_station(&self, station: Station) {
         self.title_label.set_text(&station.name);
+        self.info_expander.set_title(&station.name);
         self.infobox.set_station(&station);
 
         // reset everything else
