@@ -30,4 +30,4 @@ features = ["v3_22"]
 
 [dependencies.libhandy]
 git = "https://gitlab.gnome.org/World/Rust/libhandy-rs"
-features = ["v0_0_6"]
+features = ["v0_0_8"]

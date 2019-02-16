@@ -18,7 +18,7 @@
             <property name="visible">True</property>
             <property name="can_focus">False</property>
             <property name="mode_transition_type">slide</property>
-            <property name="child_transition_type">slide</property>
+            <property name="child_transition_type">crossfade</property>
             <child>
               <object class="GtkHeaderBar" id="view_headerbar">
                 <property name="visible">True</property>
@@ -124,7 +124,7 @@
                 <property name="visible">True</property>
                 <property name="can_focus">False</property>
                 <property name="mode_transition_type">slide</property>
-                <property name="child_transition_type">slide</property>
+                <property name="child_transition_type">crossfade</property>
                 <child>
                   <object class="GtkStack" id="view_stack">
                     <property name="visible">True</property>
@@ -178,10 +178,10 @@
                     <property name="maximum_width">400</property>
                     <child>
                       <object class="GtkStack" id="sidebar_stack">
+                        <property name="width_request">275</property>
                         <property name="visible">True</property>
                         <property name="can_focus">False</property>
                         <property name="transition_type">crossfade</property>
-                        <property name="width_request">275</property>
                         <child>
                           <object class="GtkBox" id="no_playback">
                             <property name="visible">True</property>
