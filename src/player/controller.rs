@@ -10,6 +10,5 @@ use rustio::Station;
 pub trait Controller {
     fn set_station(&self, station: Station);
     fn set_playback_state(&self, playback_state: &PlaybackState);
-    fn set_volume(&self, volume: f64);
     fn set_song_title(&self, title: &str);
 }

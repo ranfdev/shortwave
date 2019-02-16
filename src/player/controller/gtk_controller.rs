@@ -14,14 +14,12 @@ pub struct GtkController {
     sender: Sender<Action>,
 
     infobox: StationInfobox,
-    info_expander: libhandy::ExpanderRow,
     title_label: gtk::Label,
     subtitle_label: gtk::Label,
     subtitle_revealer: gtk::Revealer,
     playback_button_stack: gtk::Stack,
     start_playback_button: gtk::Button,
     stop_playback_button: gtk::Button,
-    volume_button: gtk::VolumeButton,
     error_label: gtk::Label,
 }
 
@@ -31,7 +29,6 @@ impl GtkController {
 
         let infobox = StationInfobox::new();
         let info_box: gtk::Box = builder.get_object("info_box").unwrap();
-        let info_expander: libhandy::ExpanderRow = builder.get_object("info_expander").unwrap();
         info_box.add(&infobox.widget);
 
         let widget: gtk::Box = builder.get_object("gtk_controller").unwrap();
@@ -41,21 +38,18 @@ impl GtkController {
         let playback_button_stack: gtk::Stack = builder.get_object("playback_button_stack").unwrap();
         let start_playback_button: gtk::Button = builder.get_object("start_playback_button").unwrap();
         let stop_playback_button: gtk::Button = builder.get_object("stop_playback_button").unwrap();
-        let volume_button: gtk::VolumeButton = builder.get_object("volume_button").unwrap();
         let error_label: gtk::Label = builder.get_object("error_label").unwrap();
 
         let controller = Self {
             widget,
             sender,
             infobox,
-            info_expander,
             title_label,
             subtitle_label,
             subtitle_revealer,
             playback_button_stack,
             start_playback_button,
             stop_playback_button,
-            volume_button,
             error_label,
         };
 
@@ -75,19 +69,12 @@ impl GtkController {
         self.stop_playback_button.connect_clicked(move |_| {
             sender.send(Action::PlaybackStop).unwrap();
         });
-
-        // volume button
-        let sender = self.sender.clone();
-        self.volume_button.connect_value_changed(move |_, value| {
-            sender.send(Action::PlaybackSetVolume(value)).unwrap();
-        });
     }
 }
 
 impl Controller for GtkController {
     fn set_station(&self, station: Station) {
         self.title_label.set_text(&station.name);
-        self.info_expander.set_title(&station.name);
         self.infobox.set_station(&station);
 
         // reset everything else
@@ -107,10 +94,6 @@ impl Controller for GtkController {
                 self.error_label.set_text(&text);
             }
         };
-    }
-
-    fn set_volume(&self, volume: f64) {
-        self.volume_button.set_value(volume);
     }
 
     fn set_song_title(&self, title: &str) {

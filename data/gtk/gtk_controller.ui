@@ -2,7 +2,6 @@
 <!-- Generated with glade 3.22.1 -->
 <interface>
   <requires lib="gtk+" version="3.22"/>
-  <requires lib="libhandy" version="0.0"/>
   <object class="GtkPopover" id="error_popover">
     <property name="can_focus">False</property>
     <child>
@@ -62,6 +61,19 @@
             <property name="fill">True</property>
             <property name="position">2</property>
           </packing>
+        </child>
+      </object>
+    </child>
+  </object>
+  <object class="GtkPopover" id="info_popover">
+    <property name="can_focus">False</property>
+    <child>
+      <object class="GtkBox" id="info_box">
+        <property name="visible">True</property>
+        <property name="can_focus">False</property>
+        <property name="border_width">12</property>
+        <child>
+          <placeholder/>
         </child>
       </object>
     </child>
@@ -255,40 +267,24 @@
           </packing>
         </child>
         <child>
-          <object class="GtkVolumeButton" id="volume_button">
+          <object class="GtkMenuButton" id="info_button">
             <property name="visible">True</property>
             <property name="can_focus">True</property>
-            <property name="focus_on_click">False</property>
             <property name="receives_default">True</property>
             <property name="halign">center</property>
             <property name="valign">center</property>
             <property name="relief">none</property>
-            <property name="orientation">vertical</property>
-            <property name="icons">audio-volume-muted-symbolic
-audio-volume-high-symbolic
-audio-volume-low-symbolic
-audio-volume-medium-symbolic</property>
-            <child internal-child="plus_button">
-              <object class="GtkButton">
-                <property name="can_focus">True</property>
-                <property name="receives_default">True</property>
-                <property name="halign">center</property>
-                <property name="valign">center</property>
-                <property name="relief">none</property>
-              </object>
-            </child>
-            <child internal-child="minus_button">
-              <object class="GtkButton">
-                <property name="can_focus">True</property>
-                <property name="receives_default">True</property>
-                <property name="halign">center</property>
-                <property name="valign">center</property>
-                <property name="relief">none</property>
+            <property name="popover">info_popover</property>
+            <child>
+              <object class="GtkImage">
+                <property name="visible">True</property>
+                <property name="can_focus">False</property>
+                <property name="icon_name">dialog-information-symbolic</property>
               </object>
             </child>
           </object>
           <packing>
-            <property name="expand">False</property>
+            <property name="expand">True</property>
             <property name="fill">True</property>
             <property name="position">2</property>
           </packing>
@@ -297,50 +293,7 @@ audio-volume-medium-symbolic</property>
       <packing>
         <property name="expand">False</property>
         <property name="fill">True</property>
-        <property name="position">4</property>
-      </packing>
-    </child>
-    <child>
-      <object class="GtkFrame">
-        <property name="visible">True</property>
-        <property name="can_focus">False</property>
-        <property name="margin_top">6</property>
-        <property name="margin_bottom">6</property>
-        <property name="label_xalign">0</property>
-        <child>
-          <object class="GtkListBox">
-            <property name="visible">True</property>
-            <property name="can_focus">False</property>
-            <property name="selection_mode">none</property>
-            <property name="activate_on_single_click">False</property>
-            <child>
-              <object class="HdyExpanderRow" id="info_expander">
-                <property name="visible">True</property>
-                <property name="can_focus">False</property>
-                <property name="title">Station details</property>
-                <child>
-                  <object class="GtkBox" id="info_box">
-                    <property name="visible">True</property>
-                    <property name="can_focus">False</property>
-                    <property name="halign">center</property>
-                    <property name="border_width">6</property>
-                    <child>
-                      <placeholder/>
-                    </child>
-                  </object>
-                </child>
-              </object>
-            </child>
-          </object>
-        </child>
-        <child type="label_item">
-          <placeholder/>
-        </child>
-      </object>
-      <packing>
-        <property name="expand">False</property>
-        <property name="fill">True</property>
-        <property name="position">8</property>
+        <property name="position">3</property>
       </packing>
     </child>
   </object>

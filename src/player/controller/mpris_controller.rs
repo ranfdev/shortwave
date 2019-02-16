@@ -110,10 +110,6 @@ impl Controller for MprisController {
         };
     }
 
-    fn set_volume(&self, _volume: f64) {
-        debug!("mpris: setting volume is not supported");
-    }
-
     fn set_song_title(&self, title: &str) {
         self.song_title.set(Some(title.to_string()));
         self.update_metadata();

@@ -116,11 +116,6 @@ impl PlayerBackend {
         let _ = self.pipeline.set_state(state);
     }
 
-    pub fn set_volume(&self, v: f64) {
-        debug!("Set volume: {}", v);
-        self.volume.set_property("volume", &v).unwrap();
-    }
-
     pub fn get_pipeline_bus(&self) -> Bus {
         self.pipeline.get_bus().expect("Unable to get pipeline bus")
     }

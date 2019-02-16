@@ -122,10 +122,6 @@ impl Player {
         };
     }
 
-    pub fn set_volume(&self, volume: f64) {
-        self.backend.lock().unwrap().set_volume(volume);
-    }
-
     pub fn shutdown(&self) {
         self.set_playback(PlaybackState::Stopped);
         self.song_listbox.borrow_mut().delete_everything();
