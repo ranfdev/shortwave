@@ -25,7 +25,7 @@ impl SongListBox {
         let current_station = None;
         let current_song = None;
 
-        let max_length = 2;
+        let max_length = 5;
         let song_list = Vec::new();
         let row_list = Vec::new();
 
@@ -57,6 +57,7 @@ impl SongListBox {
                 // create row and insert it into listbox
                 let row = SongRow::new(s.clone());
                 self.listbox.insert(&row.widget, 0);
+                self.widget.set_visible(true);
 
                 // insert widget (SongRow) and song into the lists
                 self.row_list.insert(0, row);

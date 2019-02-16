@@ -195,15 +195,6 @@ impl Player {
     }
 
     fn setup_signals(&self) {
-        // stream connect button
-        //let stream_address_entry = self.player_widgets.stream_address_entry.clone();
-        //self.player_widgets.stream_connect_button.connect_clicked(move |_| {
-        //    let address = stream_address_entry.get_text().unwrap();
-        //    debug!("Connect to {}", address);
-        //    let chromecast = Chromecast::new(&address);
-        //    let result = chromecast.search();
-        //});
-
         // new backend (pipeline) bus messages
         let bus = self.backend.lock().unwrap().get_pipeline_bus();
         let controller = self.controller.clone();

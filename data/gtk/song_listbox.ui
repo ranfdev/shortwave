@@ -1,9 +1,8 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<!-- Generated with glade 3.22.0 -->
+<!-- Generated with glade 3.22.1 -->
 <interface>
   <requires lib="gtk+" version="3.20"/>
   <object class="GtkBox" id="song_listbox">
-    <property name="visible">True</property>
     <property name="can_focus">False</property>
     <property name="no_show_all">True</property>
     <property name="margin_top">6</property>
@@ -34,6 +33,8 @@
           <object class="GtkListBox" id="listbox">
             <property name="visible">True</property>
             <property name="can_focus">False</property>
+            <property name="selection_mode">none</property>
+            <property name="activate_on_single_click">False</property>
           </object>
         </child>
         <child type="label_item">

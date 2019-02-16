@@ -1,7 +1,8 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<!-- Generated with glade 3.22.0 -->
+<!-- Generated with glade 3.22.1 -->
 <interface>
   <requires lib="gtk+" version="3.22"/>
+  <requires lib="libhandy" version="0.0"/>
   <object class="GtkPopover" id="error_popover">
     <property name="can_focus">False</property>
     <child>
@@ -65,24 +66,11 @@
       </object>
     </child>
   </object>
-  <object class="GtkPopover" id="info_popover">
-    <property name="can_focus">False</property>
-    <child>
-      <object class="GtkBox" id="info_box">
-        <property name="visible">True</property>
-        <property name="can_focus">False</property>
-        <property name="border_width">6</property>
-        <property name="orientation">vertical</property>
-        <child>
-          <placeholder/>
-        </child>
-      </object>
-    </child>
-  </object>
   <object class="GtkBox" id="gtk_controller">
     <property name="visible">True</property>
     <property name="can_focus">False</property>
     <property name="orientation">vertical</property>
+    <property name="spacing">3</property>
     <child>
       <object class="GtkFrame">
         <property name="visible">True</property>
@@ -94,7 +82,7 @@
             <property name="visible">True</property>
             <property name="can_focus">False</property>
             <property name="valign">center</property>
-            <property name="pixel_size">128</property>
+            <property name="pixel_size">192</property>
             <property name="icon_name">emblem-music-symbolic</property>
           </object>
         </child>
@@ -136,6 +124,7 @@
           <object class="GtkLabel" id="subtitle_label">
             <property name="visible">True</property>
             <property name="can_focus">False</property>
+            <property name="margin_bottom">6</property>
             <property name="label" translatable="yes">subtitle</property>
             <property name="justify">center</property>
             <property name="wrap">True</property>
@@ -150,49 +139,31 @@
       </packing>
     </child>
     <child>
-      <object class="GtkLabel" id="location_label">
-        <property name="visible">True</property>
-        <property name="can_focus">False</property>
-        <property name="margin_bottom">6</property>
-        <property name="label" translatable="yes">location</property>
-        <style>
-          <class name="dim-label"/>
-          <class name="small"/>
-        </style>
-      </object>
-      <packing>
-        <property name="expand">False</property>
-        <property name="fill">True</property>
-        <property name="position">3</property>
-      </packing>
-    </child>
-    <child>
       <object class="GtkBox">
         <property name="visible">True</property>
         <property name="can_focus">False</property>
         <property name="halign">center</property>
         <property name="margin_top">6</property>
+        <property name="margin_bottom">6</property>
         <property name="homogeneous">True</property>
         <child>
-          <object class="GtkMenuButton">
+          <object class="GtkMenuButton" id="stream_button">
             <property name="visible">True</property>
             <property name="can_focus">True</property>
             <property name="receives_default">True</property>
             <property name="halign">center</property>
             <property name="valign">center</property>
             <property name="relief">none</property>
-            <property name="popover">info_popover</property>
             <child>
               <object class="GtkImage">
                 <property name="visible">True</property>
                 <property name="can_focus">False</property>
-                <property name="valign">center</property>
-                <property name="icon_name">view-more-symbolic</property>
+                <property name="icon_name">emblem-shared-symbolic</property>
               </object>
             </child>
           </object>
           <packing>
-            <property name="expand">False</property>
+            <property name="expand">True</property>
             <property name="fill">True</property>
             <property name="position">0</property>
           </packing>
@@ -332,7 +303,50 @@ audio-volume-medium-symbolic</property>
       <packing>
         <property name="expand">False</property>
         <property name="fill">True</property>
-        <property name="position">5</property>
+        <property name="position">4</property>
+      </packing>
+    </child>
+    <child>
+      <object class="GtkFrame">
+        <property name="visible">True</property>
+        <property name="can_focus">False</property>
+        <property name="margin_top">6</property>
+        <property name="margin_bottom">6</property>
+        <property name="label_xalign">0</property>
+        <child>
+          <object class="GtkListBox">
+            <property name="visible">True</property>
+            <property name="can_focus">False</property>
+            <property name="selection_mode">none</property>
+            <property name="activate_on_single_click">False</property>
+            <child>
+              <object class="HdyExpanderRow" id="info_expander">
+                <property name="visible">True</property>
+                <property name="can_focus">False</property>
+                <property name="title">Station information</property>
+                <child>
+                  <object class="GtkBox" id="info_box">
+                    <property name="visible">True</property>
+                    <property name="can_focus">False</property>
+                    <property name="halign">center</property>
+                    <property name="border_width">6</property>
+                    <child>
+                      <placeholder/>
+                    </child>
+                  </object>
+                </child>
+              </object>
+            </child>
+          </object>
+        </child>
+        <child type="label_item">
+          <placeholder/>
+        </child>
+      </object>
+      <packing>
+        <property name="expand">False</property>
+        <property name="fill">True</property>
+        <property name="position">8</property>
       </packing>
     </child>
   </object>

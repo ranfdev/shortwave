@@ -16,7 +16,6 @@ pub struct GtkController {
     title_label: gtk::Label,
     subtitle_label: gtk::Label,
     subtitle_revealer: gtk::Revealer,
-    location_label: gtk::Label,
     playback_button_stack: gtk::Stack,
     start_playback_button: gtk::Button,
     stop_playback_button: gtk::Button,
@@ -36,7 +35,6 @@ impl GtkController {
         let title_label: gtk::Label = builder.get_object("title_label").unwrap();
         let subtitle_label: gtk::Label = builder.get_object("subtitle_label").unwrap();
         let subtitle_revealer: gtk::Revealer = builder.get_object("subtitle_revealer").unwrap();
-        let location_label: gtk::Label = builder.get_object("location_label").unwrap();
         let playback_button_stack: gtk::Stack = builder.get_object("playback_button_stack").unwrap();
         let start_playback_button: gtk::Button = builder.get_object("start_playback_button").unwrap();
         let stop_playback_button: gtk::Button = builder.get_object("stop_playback_button").unwrap();
@@ -50,7 +48,6 @@ impl GtkController {
             title_label,
             subtitle_label,
             subtitle_revealer,
-            location_label,
             playback_button_stack,
             start_playback_button,
             stop_playback_button,
@@ -86,7 +83,6 @@ impl GtkController {
 impl Controller for GtkController {
     fn set_station(&self, station: Station) {
         self.title_label.set_text(&station.name);
-        self.location_label.set_text(&format!("{} {}", station.country, station.state));
         self.infobox.set_station(&station);
 
         // reset everything else
