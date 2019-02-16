@@ -23,6 +23,7 @@ stopwatch = "0.0.7"
 uuid = { version = "0.7", features = ["v4"] }
 rust_cast = "0.14.0"
 mdns = "0.3.1"
+chrono = "0.4.6"
 
 [dependencies.gtk]
 version = "0.5"

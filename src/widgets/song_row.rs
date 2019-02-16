@@ -1,5 +1,6 @@
 use gtk::prelude::*;
 use libhandy::{ActionRow, ActionRowExt};
+use chrono::{prelude::*, NaiveTime};
 
 use crate::song::Song;
 
@@ -13,7 +14,7 @@ impl SongRow {
     pub fn new(song: Song) -> Self {
         let widget = ActionRow::new();
         widget.set_title(&song.title);
-        widget.set_subtitle(&song.duration.elapsed().as_secs().to_string()); //TODO: Display time correctly
+        widget.set_subtitle(&Self::format_duration(song.duration.elapsed().as_secs())); //TODO: Display time correctly
         widget.set_icon_name("");
 
         let save_button = gtk::Button::new();
@@ -40,4 +41,17 @@ impl SongRow {
             save_button.set_visible(false);
         });
     }
+
+    // stolen from gnome-podcasts
+    // https://gitlab.gnome.org/haecker-felix/podcasts/blob/2f8a6a91f87d7fa335a954bbaf2f70694f32f6dd/podcasts-gtk/src/widgets/player.rs#L168
+    fn format_duration(seconds: u64) -> String {
+        let time = NaiveTime::from_num_seconds_from_midnight(seconds as u32, 0);
+
+        if seconds >= 3600 {
+            time.format("%T").to_string()
+        } else {
+            time.format("%M∶%S").to_string()
+        }
+    }
+
 }
