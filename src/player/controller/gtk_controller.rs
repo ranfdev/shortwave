@@ -1,5 +1,4 @@
 use gtk::prelude::*;
-use libhandy::prelude::*;
 use rustio::Station;
 
 use std::sync::mpsc::Sender;
