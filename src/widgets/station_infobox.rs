@@ -3,7 +3,6 @@ use rustio::Station;
 
 pub struct StationInfobox {
     pub widget: gtk::Box,
-    builder: gtk::Builder,
 
     codec_label: gtk::Label,
     homepage_label: gtk::Label,
@@ -27,7 +26,6 @@ impl StationInfobox {
 
         Self {
             widget,
-            builder,
             codec_label,
             homepage_label,
             tags_label,

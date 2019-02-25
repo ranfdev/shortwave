@@ -33,7 +33,8 @@
         "env" : {
             "RUSTFLAGS" : "--remap-path-prefix =../",
             "CARGO_HOME" : "/run/build/Shortwave/cargo",
-            "RUST_BACKTRACE" : "1"
+            "RUST_BACKTRACE" : "1",
+            "RUST_LOG" : "shortwave=debug"
         }
     },
     "modules" : [

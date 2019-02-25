@@ -1,6 +1,6 @@
 use gtk::prelude::*;
 use libhandy::{ActionRow, ActionRowExt};
-use chrono::{prelude::*, NaiveTime};
+use chrono::{NaiveTime};
 
 use crate::song::Song;
 

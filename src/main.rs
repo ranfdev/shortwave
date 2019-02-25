@@ -1,7 +1,10 @@
 #[macro_use]
 extern crate log;
+extern crate pretty_env_logger;
+
 #[macro_use]
 extern crate quick_error;
+
 
 mod app;
 mod library;
@@ -14,11 +17,10 @@ mod widgets;
 mod window;
 
 use crate::app::App;
-use simplelog::*;
 
 fn main() {
     // Initialize logger
-    SimpleLogger::init(LevelFilter::Debug, Config::default()).unwrap();
+    pretty_env_logger::init();
 
     // Initialize GTK
     gtk::init().unwrap_or_else(|_| panic!("Failed to initialize GTK."));

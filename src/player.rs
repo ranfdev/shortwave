@@ -147,7 +147,6 @@ impl Player {
                 });
             }
             gstreamer::MessageView::StateChanged(sc) => {
-                debug!("Playback state changed: {:?}", sc.get_current());
                 let playback_state = match sc.get_current() {
                     gstreamer::State::Playing => PlaybackState::Playing,
                     gstreamer::State::Paused => PlaybackState::Loading,

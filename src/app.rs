@@ -216,7 +216,6 @@ impl App {
 
     fn process_action(&self) -> glib::Continue {
         if let Ok(action) = self.receiver.try_recv() {
-            debug!("Incoming action: {:?}", action);
             match action {
                 Action::ViewShowSearch => self.window.set_view(View::Search),
                 Action::ViewShowLibrary => self.window.set_view(View::Library),
