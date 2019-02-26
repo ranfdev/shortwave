@@ -61,16 +61,19 @@ impl Library {
     }
 
     pub fn add_stations(&self, stations: Vec<Station>) {
+        debug!("Add {} station(s)", stations.len());
         self.station_listbox.borrow_mut().add_stations(stations);
         self.update_visible_page();
     }
 
     pub fn remove_stations(&self, stations: Vec<Station>) {
+        debug!("Remove {} station(s)", stations.len());
         self.station_listbox.borrow_mut().remove_stations(stations);
         self.update_visible_page();
     }
 
     pub fn write_data(&self) {
+        debug!("Write library data to disk...");
         Self::write_stations_to_db(&self.db_path, self.station_listbox.borrow().get_stations()).expect("Could not write stations to database.");
     }
 
@@ -128,11 +131,6 @@ impl Library {
     }
 
     fn write_stations_to_db(path: &PathBuf, stations: Vec<Station>) -> Result<(), LibraryError> {
-        if stations.len() == 0 {
-            debug!("No stations - Do nothing.");
-            return Ok(());
-        }
-
         let tmpdb = Self::get_database_path("tmp.db")?;
 
         info!("Delete previous database data...");
