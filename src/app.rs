@@ -1,9 +1,10 @@
 use gio::prelude::*;
+use glib::{Receiver, Sender};
 use gtk::prelude::*;
 use rustio::{Station, StationSearch};
 
+use std::cell::RefCell;
 use std::rc::Rc;
-use std::sync::mpsc::{channel, Receiver, Sender};
 
 use crate::library::Library;
 use crate::player::{PlaybackState, Player};
@@ -42,7 +43,7 @@ pub struct App {
     gtk_app: gtk::Application,
 
     sender: Sender<Action>,
-    receiver: Receiver<Action>,
+    receiver: RefCell<Option<Receiver<Action>>>,
 
     window: Window,
     player: Player,
@@ -65,7 +66,8 @@ impl App {
         gtk::StyleContext::add_provider_for_screen(&gdk::Screen::get_default().unwrap(), &p, 500);
 
         let gtk_app = gtk::Application::new(info.app_id.as_str(), gio::ApplicationFlags::FLAGS_NONE).unwrap();
-        let (sender, receiver) = channel();
+        let (sender, r) = glib::MainContext::channel(glib::PRIORITY_DEFAULT);
+        let receiver = RefCell::new(Some(r));
 
         let window = Window::new(sender.clone(), &info);
         let player = Player::new(sender.clone());
@@ -106,7 +108,8 @@ impl App {
         info!("Version: {} ({})", self.info.version, self.info.profile);
 
         let a = app.clone();
-        gtk::timeout_add(25, move || a.process_action());
+        let receiver = self.receiver.borrow_mut().take().unwrap();
+        receiver.attach(None, move |action| a.process_action(action));
 
         self.gtk_app.run(&[]);
         self.player.shutdown();
@@ -196,7 +199,6 @@ impl App {
             _ => Sorting::Name,
         };
 
-        debug!("Sorting: {} / {}", sorting_str, order_str);
         sender.send(Action::ViewSetSorting(sorting, order)).unwrap();
     }
 
@@ -214,27 +216,25 @@ impl App {
         self.gtk_app.connect_activate(move |app| app.add_window(&window));
     }
 
-    fn process_action(&self) -> glib::Continue {
-        if let Ok(action) = self.receiver.try_recv() {
-            match action {
-                Action::ViewShowSearch => self.window.set_view(View::Search),
-                Action::ViewShowLibrary => self.window.set_view(View::Library),
-                Action::ViewRaise => self.window.widget.present_with_time((glib::get_monotonic_time() / 1000) as u32),
-                Action::ViewShowNotification(text) => self.window.show_notification(text),
-                Action::ViewSetSorting(sorting, order) => self.library.set_sorting(sorting, order),
-                Action::PlaybackSetStation(station) => {
-                    self.player.set_station(station.clone());
-                    self.window.show_sidebar_player(true);
-                }
-                Action::PlaybackStart => self.player.set_playback(PlaybackState::Playing),
-                Action::PlaybackStop => self.player.set_playback(PlaybackState::Stopped),
-                Action::LibraryWrite => self.library.write_data(),
-                Action::LibraryImport => self.import_library(),
-                Action::LibraryExport => self.export_library(),
-                Action::LibraryAddStations(stations) => self.library.add_stations(stations),
-                Action::LibraryRemoveStations(stations) => self.library.remove_stations(stations),
-                Action::SearchFor(data) => self.search.search_for(data),
+    fn process_action(&self, action: Action) -> glib::Continue {
+        match action {
+            Action::ViewShowSearch => self.window.set_view(View::Search),
+            Action::ViewShowLibrary => self.window.set_view(View::Library),
+            Action::ViewRaise => self.window.widget.present_with_time((glib::get_monotonic_time() / 1000) as u32),
+            Action::ViewShowNotification(text) => self.window.show_notification(text),
+            Action::ViewSetSorting(sorting, order) => self.library.set_sorting(sorting, order),
+            Action::PlaybackSetStation(station) => {
+                self.player.set_station(station.clone());
+                self.window.show_sidebar_player(true);
             }
+            Action::PlaybackStart => self.player.set_playback(PlaybackState::Playing),
+            Action::PlaybackStop => self.player.set_playback(PlaybackState::Stopped),
+            Action::LibraryWrite => self.library.write_data(),
+            Action::LibraryImport => self.import_library(),
+            Action::LibraryExport => self.export_library(),
+            Action::LibraryAddStations(stations) => self.library.add_stations(stations),
+            Action::LibraryRemoveStations(stations) => self.library.remove_stations(stations),
+            Action::SearchFor(data) => self.search.search_for(data),
         }
         glib::Continue(true)
     }

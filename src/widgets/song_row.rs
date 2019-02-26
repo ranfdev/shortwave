@@ -1,6 +1,6 @@
+use chrono::NaiveTime;
 use gtk::prelude::*;
 use libhandy::{ActionRow, ActionRowExt};
-use chrono::{NaiveTime};
 
 use crate::song::Song;
 
@@ -20,7 +20,7 @@ impl SongRow {
         let save_button = gtk::Button::new();
         save_button.set_relief(gtk::ReliefStyle::None);
         save_button.set_valign(gtk::Align::Center);
-        let save_image = gtk::Image::new_from_icon_name("document-save-symbolic", 4);
+        let save_image = gtk::Image::new_from_icon_name("document-save-symbolic", gtk::IconSize::__Unknown(4));
         save_button.add(&save_image);
         widget.add_action(&save_button);
         widget.show_all();
@@ -53,5 +53,4 @@ impl SongRow {
             time.format("%M∶%S").to_string()
         }
     }
-
 }

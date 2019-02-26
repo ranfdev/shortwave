@@ -1,3 +1,4 @@
+use glib::Sender;
 use gtk::prelude::*;
 use rusqlite::Connection;
 use rustio::{Client, Station};
@@ -8,7 +9,6 @@ use std::fs::File;
 use std::io;
 use std::path::PathBuf;
 use std::result::Result;
-use std::sync::mpsc::Sender;
 use std::thread;
 
 use crate::app::{Action, AppInfo};
@@ -41,7 +41,7 @@ impl Library {
         let db_path = Self::get_database_path("shortwave.db").expect("Could not open database path...");
 
         let logo_image: gtk::Image = builder.get_object("logo_image").unwrap();
-        logo_image.set_from_icon_name(Some(format!("{}-symbolic", info.app_id).as_str()), 128);
+        logo_image.set_from_icon_name(Some(format!("{}-symbolic", info.app_id).as_str()), gtk::IconSize::__Unknown(128));
         let welcome_text: gtk::Label = builder.get_object("welcome_text").unwrap();
         welcome_text.set_text(format!("Welcome to {}", info.app_name).as_str());
 

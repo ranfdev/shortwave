@@ -1,7 +1,6 @@
+use glib::Sender;
 use gtk::prelude::*;
 use rustio::Station;
-
-use std::sync::mpsc::Sender;
 
 use crate::app::Action;
 use crate::widgets::station_infobox::StationInfobox;

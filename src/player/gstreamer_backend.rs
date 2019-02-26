@@ -200,9 +200,7 @@ impl PlayerBackend {
         bin.add_pad(&ghostpad).unwrap();
         bin.sync_state_with_parent().unwrap();
 
-        if self.file_srcpad.link(&ghostpad) != gstreamer::PadLinkReturn::Ok {
-            warn!("Queue src pad cannot linked to vorbisenc sinkpad");
-        }
+        self.file_srcpad.link(&ghostpad).expect("Queue src pad cannot linked to vorbisenc sinkpad");
 
         self.muxsinkbin = Some(bin);
     }

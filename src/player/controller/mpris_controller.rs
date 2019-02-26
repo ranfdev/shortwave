@@ -1,8 +1,8 @@
+use glib::Sender;
 use mpris_player::{Metadata, MprisPlayer, OrgMprisMediaPlayer2Player, PlaybackStatus};
 use rustio::Station;
 
 use std::cell::Cell;
-use std::sync::mpsc::Sender;
 use std::sync::Arc;
 
 use crate::app::Action;

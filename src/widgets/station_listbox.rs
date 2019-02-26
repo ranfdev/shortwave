@@ -1,8 +1,7 @@
+use glib::Sender;
 use gtk::prelude::*;
 use libhandy::{Column, ColumnExt};
 use rustio::Station;
-
-use std::sync::mpsc::Sender;
 
 use crate::app::Action;
 use crate::station_model::{Order, Sorting, StationModel};

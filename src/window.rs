@@ -1,7 +1,6 @@
+use glib::Sender;
 use gtk::prelude::*;
 use libhandy::LeafletExt;
-
-use std::sync::mpsc::Sender;
 
 use crate::app::{Action, AppInfo};
 use crate::widgets::notification::Notification;
@@ -55,7 +54,8 @@ impl Window {
 
         // Devel style class
         if appinfo.app_id.ends_with("Devel") {
-            window.widget.get_style_context().map(|c| c.add_class("devel"));
+            let ctx = window.widget.get_style_context();
+            ctx.add_class("devel");
         }
 
         window.setup_signals();

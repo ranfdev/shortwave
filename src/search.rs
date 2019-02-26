@@ -1,8 +1,8 @@
+use glib::Sender;
 use gtk::prelude::*;
 use rustio::{Client, StationSearch};
 
 use std::cell::RefCell;
-use std::sync::mpsc::Sender;
 
 use crate::app::Action;
 use crate::widgets::station_listbox::StationListBox;
@@ -50,7 +50,7 @@ impl Search {
         let search_entry: gtk::SearchEntry = self.builder.get_object("search_entry").unwrap();
         let sender = self.sender.clone();
         search_entry.connect_search_changed(move |entry| {
-            let data = StationSearch::search_for_name(entry.get_text().unwrap(), false, 100);
+            let data = StationSearch::search_for_name(entry.get_text().unwrap().to_string(), false, 100);
             sender.send(Action::SearchFor(data)).unwrap();
         });
     }

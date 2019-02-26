@@ -1,7 +1,6 @@
+use glib::Sender;
 use gtk::prelude::*;
 use rustio::Station;
-
-use std::sync::mpsc::Sender;
 
 use crate::app::Action;
 use crate::player::Controller;
@@ -88,7 +87,7 @@ impl Controller for GtkController {
             PlaybackState::Loading => self.playback_button_stack.set_visible_child_name("loading"),
             PlaybackState::Failure(msg) => {
                 self.playback_button_stack.set_visible_child_name("error");
-                let mut text = self.error_label.get_text().unwrap();
+                let mut text = self.error_label.get_text().unwrap().to_string();
                 text = text + " " + msg;
                 self.error_label.set_text(&text);
             }

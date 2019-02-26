@@ -5,7 +5,6 @@ extern crate pretty_env_logger;
 #[macro_use]
 extern crate quick_error;
 
-
 mod app;
 mod library;
 mod player;

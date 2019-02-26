@@ -1,10 +1,10 @@
+use glib::Sender;
 use gstreamer::prelude::*;
 use gtk::prelude::*;
 use rustio::{Client, Station};
 
 use std::cell::RefCell;
 use std::rc::Rc;
-use std::sync::mpsc::Sender;
 use std::sync::{Arc, Mutex};
 use std::thread;
 
