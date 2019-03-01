@@ -1,0 +1,6 @@
+pub static APP_ID: &'static str = @APP_ID@;
+pub static PKGDATADIR: &'static str = @PKGDATADIR@;
+pub static PROFILE: &'static str = @PROFILE@;
+pub static NAME_PREFIX: &'static str = @NAME_PREFIX@;
+pub static NAME: &'static str = @NAME@;
+pub static VERSION: &'static str = @VERSION@;

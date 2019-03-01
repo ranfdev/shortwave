@@ -2,7 +2,8 @@ use glib::Sender;
 use gtk::prelude::*;
 use libhandy::LeafletExt;
 
-use crate::app::{Action, AppInfo};
+use crate::app::Action;
+use crate::config;
 use crate::widgets::notification::Notification;
 
 #[derive(Debug, Clone, PartialEq)]
@@ -24,14 +25,14 @@ pub struct Window {
 }
 
 impl Window {
-    pub fn new(sender: Sender<Action>, appinfo: &AppInfo) -> Self {
+    pub fn new(sender: Sender<Action>) -> Self {
         let builder = gtk::Builder::new_from_resource("/de/haeckerfelix/Shortwave/gtk/window.ui");
         let menu_builder = gtk::Builder::new_from_resource("/de/haeckerfelix/Shortwave/gtk/menu.ui");
 
         let window: gtk::ApplicationWindow = builder.get_object("window").unwrap();
         let view_headerbar: gtk::HeaderBar = builder.get_object("view_headerbar").unwrap();
-        view_headerbar.set_title(Some(appinfo.app_name.as_ref()));
-        window.set_title(&appinfo.app_name);
+        view_headerbar.set_title(Some(config::NAME));
+        window.set_title(config::NAME);
 
         let player_box: gtk::Box = builder.get_object("player_box").unwrap();
         let library_box: gtk::Box = builder.get_object("library_box").unwrap();
@@ -53,7 +54,7 @@ impl Window {
         appmenu_button.set_popover(Some(&popover_menu));
 
         // Devel style class
-        if appinfo.app_id.ends_with("Devel") {
+        if config::APP_ID.ends_with("Devel") {
             let ctx = window.widget.get_style_context();
             ctx.add_class("devel");
         }

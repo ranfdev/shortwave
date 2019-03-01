@@ -6,6 +6,7 @@ use rustio::{Station, StationSearch};
 use std::cell::RefCell;
 use std::rc::Rc;
 
+use crate::config;
 use crate::library::Library;
 use crate::player::{PlaybackState, Player};
 use crate::search::Search;
@@ -30,16 +31,7 @@ pub enum Action {
     SearchFor(StationSearch),
 }
 
-#[derive(Clone)]
-pub struct AppInfo {
-    pub version: String,
-    pub profile: String,
-    pub app_name: String,
-    pub app_id: String,
-}
-
 pub struct App {
-    info: AppInfo,
     gtk_app: gtk::Application,
 
     sender: Sender<Action>,
@@ -53,25 +45,18 @@ pub struct App {
 
 impl App {
     pub fn new() -> Rc<Self> {
-        let info = AppInfo {
-            version: option_env!("VERSION").unwrap_or("0.0.0").to_string(),
-            profile: option_env!("PROFILE").unwrap_or("default").to_string(),
-            app_name: "Shortwave".to_string(),
-            app_id: option_env!("APP_ID").unwrap_or("de.haeckerfelix.Shortwave").to_string(),
-        };
-
         // Set custom style
         let p = gtk::CssProvider::new();
         gtk::CssProvider::load_from_resource(&p, "/de/haeckerfelix/Shortwave/gtk/style.css");
         gtk::StyleContext::add_provider_for_screen(&gdk::Screen::get_default().unwrap(), &p, 500);
 
-        let gtk_app = gtk::Application::new(info.app_id.as_str(), gio::ApplicationFlags::FLAGS_NONE).unwrap();
+        let gtk_app = gtk::Application::new(config::APP_ID, gio::ApplicationFlags::FLAGS_NONE).unwrap();
         let (sender, r) = glib::MainContext::channel(glib::PRIORITY_DEFAULT);
         let receiver = RefCell::new(Some(r));
 
-        let window = Window::new(sender.clone(), &info);
+        let window = Window::new(sender.clone());
         let player = Player::new(sender.clone());
-        let library = Library::new(sender.clone(), &info);
+        let library = Library::new(sender.clone());
         let search = Search::new(sender.clone());
 
         window.player_box.add(&player.widget);
@@ -84,7 +69,6 @@ impl App {
         window.widget.set_help_overlay(Some(&dialog));
 
         let app = Rc::new(Self {
-            info,
             gtk_app,
             sender,
             receiver,
@@ -94,9 +78,9 @@ impl App {
             search,
         });
 
-        glib::set_application_name(&app.info.app_name);
+        glib::set_application_name(config::NAME);
         glib::set_prgname(Some("shortwave"));
-        gtk::Window::set_default_icon_name(&app.info.app_id);
+        gtk::Window::set_default_icon_name(config::APP_ID);
 
         app.setup_gaction();
         app.setup_signals();
@@ -104,8 +88,9 @@ impl App {
     }
 
     pub fn run(&self, app: Rc<Self>) {
-        info!("{} ({})", self.info.app_name, self.info.app_id);
-        info!("Version: {} ({})", self.info.version, self.info.profile);
+        info!("{}{} ({})", config::NAME_PREFIX, config::NAME, config::APP_ID);
+        info!("Version: {} ({})", config::VERSION, config::PROFILE);
+        info!("Datadir: {}", config::PKGDATADIR);
 
         let a = app.clone();
         let receiver = self.receiver.borrow_mut().take().unwrap();
@@ -124,9 +109,8 @@ impl App {
 
         // About
         let window = self.window.widget.clone();
-        let info = self.info.clone();
         self.add_gaction("about", move |_, _| {
-            Self::show_about_dialog(info.clone(), window.clone());
+            Self::show_about_dialog(window.clone());
         });
 
         // Save library
@@ -239,14 +223,14 @@ impl App {
         glib::Continue(true)
     }
 
-    fn show_about_dialog(info: AppInfo, window: gtk::ApplicationWindow) {
+    fn show_about_dialog(window: gtk::ApplicationWindow) {
         let dialog = gtk::AboutDialog::new();
-        dialog.set_program_name(info.app_name.as_str());
-        dialog.set_logo_icon_name(info.app_id.as_str());
+        dialog.set_program_name(config::NAME);
+        dialog.set_logo_icon_name(config::APP_ID);
         dialog.set_comments("A web radio client");
         dialog.set_copyright("© 2019 Felix Häcker");
         dialog.set_license_type(gtk::License::Gpl30);
-        dialog.set_version(info.version.as_str());
+        dialog.set_version(config::VERSION);
         dialog.set_transient_for(&window);
         dialog.set_modal(true);
 

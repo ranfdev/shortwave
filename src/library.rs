@@ -11,7 +11,8 @@ use std::path::PathBuf;
 use std::result::Result;
 use std::thread;
 
-use crate::app::{Action, AppInfo};
+use crate::app::Action;
+use crate::config;
 use crate::station_model::{Order, Sorting};
 use crate::widgets::station_listbox::StationListBox;
 use crate::widgets::station_row::ContentType;
@@ -31,7 +32,7 @@ pub struct Library {
 }
 
 impl Library {
-    pub fn new(sender: Sender<Action>, info: &AppInfo) -> Self {
+    pub fn new(sender: Sender<Action>) -> Self {
         let builder = gtk::Builder::new_from_resource("/de/haeckerfelix/Shortwave/gtk/library.ui");
         let widget: gtk::Box = builder.get_object("library").unwrap();
         let content_box: gtk::Box = builder.get_object("content_box").unwrap();
@@ -41,9 +42,9 @@ impl Library {
         let db_path = Self::get_database_path("shortwave.db").expect("Could not open database path...");
 
         let logo_image: gtk::Image = builder.get_object("logo_image").unwrap();
-        logo_image.set_from_icon_name(Some(format!("{}-symbolic", info.app_id).as_str()), gtk::IconSize::__Unknown(128));
+        logo_image.set_from_icon_name(Some(format!("{}-symbolic", config::APP_ID).as_str()), gtk::IconSize::__Unknown(128));
         let welcome_text: gtk::Label = builder.get_object("welcome_text").unwrap();
-        welcome_text.set_text(format!("Welcome to {}", info.app_name).as_str());
+        welcome_text.set_text(format!("Welcome to {}", config::NAME).as_str());
 
         let library = Self {
             widget,
@@ -223,3 +224,7 @@ quick_error! {
         }
     }
 }
+
+// TODO
+// Lösung: Das Model/station_listbox einfach öffentlich (statisch) für alle module verfügbar machen
+// ordentliches station model implementieren

@@ -6,6 +6,7 @@ extern crate pretty_env_logger;
 extern crate quick_error;
 
 mod app;
+mod config;
 mod library;
 mod player;
 mod search;

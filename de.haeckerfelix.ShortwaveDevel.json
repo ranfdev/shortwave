@@ -43,7 +43,6 @@
             "buildsystem" : "meson",
             "config-opts" : [
                 "-Dintrospection=enabled",
-                "-Dgtk-doc=false",
                 "-Dtests=false",
                 "-Dexamples=false",
                 "-Dvapi=false",

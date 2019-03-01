@@ -19,3 +19,4 @@ resources.gresource
 *.gresource
 tags.*
 wip
+src/config.rs

@@ -13,7 +13,7 @@ desktop_file = i18n.merge_file (
   output: '@0@.desktop'.format(application_id),
   po_dir: podir,
   install: true,
-  install_dir: join_paths (datadir, 'applications')
+  install_dir: join_paths (shortwave_datadir, 'applications')
 )
 # Validate Desktop file
 desktop_file_validate = find_program('desktop-file-validate', required: false)
@@ -39,7 +39,7 @@ appdata_file = i18n.merge_file (
   output: '@0@.appdata.xml'.format(application_id),
   po_dir: podir,
   install: true,
-  install_dir: join_paths (datadir, 'metainfo')
+  install_dir: join_paths (shortwave_datadir, 'metainfo')
 )
 # Validate Appdata
 appstream_util = find_program('appstream-util', required: false)
@@ -60,8 +60,8 @@ configure_file(
   input: 'de.haeckerfelix.Shortwave.service.in',
   output: '@0@.service'.format(application_id),
   configuration: service_conf,
-  install_dir: join_paths(datadir,'dbus-1', 'services')
+  install_dir: join_paths(shortwave_datadir,'dbus-1', 'services')
 )
 
 # gschema
-install_data('de.haeckerfelix.Shortwave.gschema.xml', install_dir: join_paths(get_option('datadir'), 'glib-2.0', 'schemas'))
+install_data('de.haeckerfelix.Shortwave.gschema.xml', install_dir: join_paths(shortwave_datadir, 'glib-2.0', 'schemas'))

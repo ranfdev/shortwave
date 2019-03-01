@@ -1,17 +1,20 @@
 #!/bin/sh
 
-export CARGO_HOME=$1/target/cargo-home
-export LOCALEDIR="$3"
-export APP_ID="$4"
-export NAME_SUFFIX="$5"
-export VERSION="$6"
-export PROFILE="$7"
+export MESON_BUILD_ROOT="$1"
+export MESON_SOURCE_ROOT="$2"
+export CARGO_TARGET_DIR="$MESON_BUILD_ROOT"/target
+export CARGO_HOME="$CARGO_TARGET_DIR"/cargo-home
+export SHORTWAVE_LOCALEDIR="$4"
 
-if [ "$PROFILE" = "Devel" ]
-then	
+if [[ $5 = "Devel" ]]
+then
     echo "DEBUG MODE"
-    cargo build --manifest-path $1/Cargo.toml -p shortwave && cp $1/target/debug/shortwave $2
+    cargo build --manifest-path \
+        "$MESON_SOURCE_ROOT"/Cargo.toml && \
+        cp "$CARGO_TARGET_DIR"/debug/shortwave $3
 else
     echo "RELEASE MODE"
-    cargo build --manifest-path $1/Cargo.toml --release -p shortwave && cp $1/target/release/shortwave $2
+    cargo build --manifest-path \
+        "$MESON_SOURCE_ROOT"/Cargo.toml --release && \
+        cp "$CARGO_TARGET_DIR"/release/shortwave $3
 fi
