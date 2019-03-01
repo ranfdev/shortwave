@@ -12,7 +12,7 @@
       <file compressed="true" preprocess="xml-stripblanks">gtk/notification.ui</file>
       <file compressed="true" preprocess="xml-stripblanks">gtk/song_listbox.ui</file>
       <file compressed="true" preprocess="xml-stripblanks">gtk/gtk_controller.ui</file>
-      <file compressed="true" preprocess="xml-stripblanks">gtk/station_infobox.ui</file>
+      <file compressed="true" preprocess="xml-stripblanks">gtk/station_dialog.ui</file>
       <file compressed="true">gtk/style.css</file>
   </gresource>
 </gresources>

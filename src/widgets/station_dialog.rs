@@ -1,43 +1,56 @@
 use gtk::prelude::*;
+use libhandy::Dialog;
 use rustio::Station;
 
-pub struct StationInfobox {
-    pub widget: gtk::Box,
+pub struct StationDialog {
+    pub widget: Dialog,
 
+    title_label: gtk::Label,
+    subtitle_label: gtk::Label,
     codec_label: gtk::Label,
     homepage_label: gtk::Label,
     tags_label: gtk::Label,
     language_label: gtk::Label,
-    votes_label: gtk::Label,
-    location_label: gtk::Label,
 }
 
-impl StationInfobox {
-    pub fn new() -> Self {
-        let builder = gtk::Builder::new_from_resource("/de/haeckerfelix/Shortwave/gtk/station_infobox.ui");
-        let widget: gtk::Box = builder.get_object("station_infobox").unwrap();
+impl StationDialog {
+    pub fn new(station: &Station, window: &gtk::Window) -> Self {
+        let builder = gtk::Builder::new_from_resource("/de/haeckerfelix/Shortwave/gtk/station_dialog.ui");
+        let widget: Dialog = builder.get_object("station_dialog").unwrap();
 
+        let title_label: gtk::Label = builder.get_object("title_label").unwrap();
+        let subtitle_label: gtk::Label = builder.get_object("subtitle_label").unwrap();
         let codec_label: gtk::Label = builder.get_object("codec_label").unwrap();
         let homepage_label: gtk::Label = builder.get_object("homepage_label").unwrap();
         let tags_label: gtk::Label = builder.get_object("tags_label").unwrap();
         let language_label: gtk::Label = builder.get_object("language_label").unwrap();
-        let votes_label: gtk::Label = builder.get_object("votes_label").unwrap();
-        let location_label: gtk::Label = builder.get_object("location_label").unwrap();
 
-        Self {
+        widget.set_transient_for(window);
+
+        let dialog = Self {
             widget,
+            title_label,
+            subtitle_label,
             codec_label,
             homepage_label,
             tags_label,
             language_label,
-            votes_label,
-            location_label,
-        }
+        };
+
+        dialog.reset();
+        dialog.set_station(&station);
+        dialog
     }
 
-    pub fn set_station(&self, station: &Station) {
+    pub fn show(&self) {
+        self.widget.set_visible(true);
+    }
+
+    fn set_station(&self, station: &Station) {
         self.reset();
-        self.votes_label.set_text(&format!("{} Votes", station.votes));
+
+        self.title_label.set_text(&station.name);
+        self.subtitle_label.set_text(&format!("{} {} · {} Votes", station.country, station.state, station.votes));
 
         if station.codec != "" {
             self.codec_label.set_text(&station.codec);
@@ -51,9 +64,6 @@ impl StationInfobox {
         if station.language != "" {
             self.language_label.set_text(&station.language);
         }
-        if !(station.country == "" && station.state == "") {
-            self.location_label.set_text(&format!("{} {}", station.country, station.state));
-        }
     }
 
     fn reset(&self) {
@@ -61,6 +71,5 @@ impl StationInfobox {
         self.homepage_label.set_text("—");
         self.tags_label.set_text("—");
         self.language_label.set_text("—");
-        self.location_label.set_text("—");
     }
 }

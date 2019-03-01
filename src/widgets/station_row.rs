@@ -3,7 +3,6 @@ use gtk::prelude::*;
 use rustio::Station;
 
 use crate::app::Action;
-use crate::widgets::station_infobox::StationInfobox;
 
 #[derive(Clone)]
 pub enum ContentType {
@@ -31,12 +30,6 @@ impl StationRow {
         station_label.set_text(&station.name);
         location_label.set_text(&format!("{} {}", station.country, station.state));
         votes_label.set_text(&format!("{} Votes", station.votes));
-
-        // Station Info Box
-        let info = StationInfobox::new();
-        info.set_station(&station);
-        let info_box: gtk::Box = builder.get_object("info_box").unwrap();
-        info_box.add(&info.widget);
 
         // Wether to show 'add' or 'remove' button
         let library_action_stack: gtk::Stack = builder.get_object("library_action_stack").unwrap();
