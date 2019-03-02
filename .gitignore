@@ -20,3 +20,16 @@ resources.gresource
 tags.*
 wip
 src/config.rs
+/_build/
+/target/
+**/*.rs.bk
+/tags
+/.idea/
+.buildconfig
+**/#*.glade#
+**/*.glade~
+**/*.json~
+**/*.ui~
+**/*.gresource
+**/#*#
+**/tags.*

@@ -45,6 +45,7 @@ podir = join_paths (meson.source_root (), 'po')
 
 subdir('po')
 subdir('data')
+subdir('hooks')
 
 cargo = find_program('cargo', required: false)
 gresource = find_program('glib-compile-resources', required: false)
