@@ -13,6 +13,7 @@ use std::thread;
 
 use crate::app::Action;
 use crate::config;
+use crate::station_model::StationModel;
 use crate::station_model::{Order, Sorting};
 use crate::widgets::station_listbox::StationListBox;
 use crate::widgets::station_row::ContentType;
@@ -24,7 +25,7 @@ static SQL_INIT_COLLECTIONS: &str = " CREATE TABLE \"collections\" ('collection_
 
 pub struct Library {
     pub widget: gtk::Box,
-    station_listbox: RefCell<StationListBox>,
+    library_model: RefCell<StationModel>,
 
     db_path: PathBuf,
     builder: gtk::Builder,
@@ -36,8 +37,11 @@ impl Library {
         let builder = gtk::Builder::new_from_resource("/de/haeckerfelix/Shortwave/gtk/library.ui");
         let widget: gtk::Box = builder.get_object("library").unwrap();
         let content_box: gtk::Box = builder.get_object("content_box").unwrap();
-        let station_listbox = RefCell::new(StationListBox::new(sender.clone(), ContentType::Library));
-        content_box.add(&station_listbox.borrow().widget);
+
+        let library_model = RefCell::new(StationModel::new());
+        let station_listbox = StationListBox::new(sender.clone(), ContentType::Library);
+        station_listbox.bind_model(&library_model.borrow());
+        content_box.add(&station_listbox.widget);
 
         let db_path = Self::get_database_path("shortwave.db").expect("Could not open database path...");
 
@@ -48,7 +52,7 @@ impl Library {
 
         let library = Self {
             widget,
-            station_listbox,
+            library_model,
             db_path,
             builder,
             sender,
@@ -63,19 +67,23 @@ impl Library {
 
     pub fn add_stations(&self, stations: Vec<Station>) {
         debug!("Add {} station(s)", stations.len());
-        self.station_listbox.borrow_mut().add_stations(stations);
+        for station in stations {
+            self.library_model.borrow_mut().add_station(station.clone());
+        }
         self.update_visible_page();
     }
 
     pub fn remove_stations(&self, stations: Vec<Station>) {
         debug!("Remove {} station(s)", stations.len());
-        self.station_listbox.borrow_mut().remove_stations(stations);
+        for station in stations {
+            self.library_model.borrow_mut().remove_station(station.clone());
+        }
         self.update_visible_page();
     }
 
     pub fn write_data(&self) {
         debug!("Write library data to disk...");
-        Self::write_stations_to_db(&self.db_path, self.station_listbox.borrow().get_stations()).expect("Could not write stations to database.");
+        Self::write_stations_to_db(&self.db_path, self.library_model.borrow().clone()).expect("Could not write stations to database.");
     }
 
     pub fn import_from_path(&self, path: &PathBuf) -> Result<(), LibraryError> {
@@ -100,12 +108,12 @@ impl Library {
     }
 
     pub fn export_to_path(&self, path: &PathBuf) -> Result<(), LibraryError> {
-        Self::write_stations_to_db(&path, self.station_listbox.borrow().get_stations()).expect("Could not export database.");
+        Self::write_stations_to_db(&path, self.library_model.borrow().clone()).expect("Could not export database.");
         Ok(())
     }
 
     pub fn set_sorting(&self, sorting: Sorting, order: Order) {
-        self.station_listbox.borrow_mut().set_sorting(sorting, order);
+        self.library_model.borrow_mut().set_sorting(sorting, order);
     }
 
     fn read_stations_from_db(path: &PathBuf) -> Result<Vec<Station>, LibraryError> {
@@ -131,7 +139,7 @@ impl Library {
         Ok(result)
     }
 
-    fn write_stations_to_db(path: &PathBuf, stations: Vec<Station>) -> Result<(), LibraryError> {
+    fn write_stations_to_db(path: &PathBuf, stations: StationModel) -> Result<(), LibraryError> {
         let tmpdb = Self::get_database_path("tmp.db")?;
 
         info!("Delete previous database data...");
@@ -186,7 +194,7 @@ impl Library {
     }
 
     fn update_visible_page(&self) {
-        if self.station_listbox.borrow().get_stations().len() != 0 {
+        if self.library_model.borrow().len() != 0 {
             self.set_visible_page("content");
         } else {
             self.set_visible_page("empty");
@@ -224,7 +232,3 @@ quick_error! {
         }
     }
 }
-
-// TODO
-// Lösung: Das Model/station_listbox einfach öffentlich (statisch) für alle module verfügbar machen
-// ordentliches station model implementieren

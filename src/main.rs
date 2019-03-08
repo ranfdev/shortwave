@@ -5,6 +5,9 @@ extern crate pretty_env_logger;
 #[macro_use]
 extern crate quick_error;
 
+#[macro_use]
+extern crate glib;
+
 mod app;
 mod config;
 mod library;
@@ -13,6 +16,7 @@ mod search;
 mod song;
 mod static_resource;
 mod station_model;
+mod station_object;
 mod widgets;
 mod window;
 

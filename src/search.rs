@@ -5,12 +5,13 @@ use rustio::{Client, StationSearch};
 use std::cell::RefCell;
 
 use crate::app::Action;
+use crate::station_model::StationModel;
 use crate::widgets::station_listbox::StationListBox;
 use crate::widgets::station_row::ContentType;
 
 pub struct Search {
     pub widget: gtk::Box,
-    station_listbox: RefCell<StationListBox>,
+    result_model: RefCell<StationModel>,
 
     builder: gtk::Builder,
     sender: Sender<Action>,
@@ -21,13 +22,15 @@ impl Search {
         let builder = gtk::Builder::new_from_resource("/de/haeckerfelix/Shortwave/gtk/search.ui");
         let widget: gtk::Box = builder.get_object("search").unwrap();
 
+        let result_model = RefCell::new(StationModel::new());
         let results_box: gtk::Box = builder.get_object("results_box").unwrap();
-        let station_listbox = RefCell::new(StationListBox::new(sender.clone(), ContentType::Other));
-        results_box.add(&station_listbox.borrow().widget);
+        let station_listbox = StationListBox::new(sender.clone(), ContentType::Other);
+        station_listbox.bind_model(&result_model.borrow());
+        results_box.add(&station_listbox.widget);
 
         let search = Self {
             widget,
-            station_listbox,
+            result_model,
             builder,
             sender,
         };
@@ -42,8 +45,10 @@ impl Search {
         let mut client = Client::new("http://www.radio-browser.info");
         let result = client.search(data).unwrap();
 
-        self.station_listbox.borrow_mut().clear();
-        self.station_listbox.borrow_mut().add_stations(result);
+        self.result_model.borrow_mut().clear();
+        for station in result {
+            self.result_model.borrow_mut().add_station(station);
+        }
     }
 
     fn setup_signals(&self) {
