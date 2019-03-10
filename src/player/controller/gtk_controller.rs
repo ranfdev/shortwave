@@ -78,11 +78,12 @@ impl GtkController {
         // info_button
         let station = self.station.clone();
         let app = self.app.clone();
+        let sender = self.sender.clone();
         self.info_button.connect_clicked(move |_| {
             let window = app.get_active_window().unwrap();
             let s = station.borrow().clone().unwrap();
 
-            let station_dialog = StationDialog::new(&s, &window);
+            let station_dialog = StationDialog::new(sender.clone(), s, &window);
             station_dialog.show();
         });
     }

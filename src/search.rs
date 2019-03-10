@@ -7,7 +7,6 @@ use std::cell::RefCell;
 use crate::app::Action;
 use crate::station_model::StationModel;
 use crate::widgets::station_listbox::StationListBox;
-use crate::widgets::station_row::ContentType;
 
 pub struct Search {
     pub widget: gtk::Box,
@@ -24,7 +23,7 @@ impl Search {
 
         let result_model = RefCell::new(StationModel::new());
         let results_box: gtk::Box = builder.get_object("results_box").unwrap();
-        let station_listbox = StationListBox::new(sender.clone(), ContentType::Other);
+        let station_listbox = StationListBox::new(sender.clone());
         station_listbox.bind_model(&result_model.borrow());
         results_box.add(&station_listbox.widget);
 

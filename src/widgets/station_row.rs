@@ -3,25 +3,22 @@ use gtk::prelude::*;
 use rustio::Station;
 
 use crate::app::Action;
-
-#[derive(Clone)]
-pub enum ContentType {
-    Library,
-    Other,
-}
+use crate::widgets::station_dialog::StationDialog;
 
 pub struct StationRow {
     pub widget: gtk::ListBoxRow,
     station: Station,
+    app: gtk::Application,
 
     builder: gtk::Builder,
     sender: Sender<Action>,
 }
 
 impl StationRow {
-    pub fn new(sender: Sender<Action>, station: Station, content_type: ContentType) -> Self {
+    pub fn new(sender: Sender<Action>, station: Station) -> Self {
         let builder = gtk::Builder::new_from_resource("/de/haeckerfelix/Shortwave/gtk/station_row.ui");
         let row: gtk::ListBoxRow = builder.get_object("station_row").unwrap();
+        let app = builder.get_application().unwrap();
 
         // Set row information
         let station_label: gtk::Label = builder.get_object("station_label").unwrap();
@@ -31,16 +28,10 @@ impl StationRow {
         location_label.set_text(&format!("{} {}", station.country, station.state));
         votes_label.set_text(&format!("{} Votes", station.votes));
 
-        // Wether to show 'add' or 'remove' button
-        let library_action_stack: gtk::Stack = builder.get_object("library_action_stack").unwrap();
-        match content_type {
-            ContentType::Library => library_action_stack.set_visible_child_name("library-remove"),
-            ContentType::Other => library_action_stack.set_visible_child_name("library-add"),
-        }
-
         let stationrow = Self {
             widget: row,
             station,
+            app,
             builder,
             sender,
         };
@@ -58,36 +49,21 @@ impl StationRow {
             sender.send(Action::PlaybackSetStation(station.clone())).unwrap();
         });
 
-        // remove_button
-        let remove_button: gtk::Button = self.builder.get_object("remove_button").unwrap();
-        let sender = self.sender.clone();
-        let station = self.station.clone();
-        remove_button.connect_clicked(move |btn| {
-            sender.send(Action::LibraryRemoveStations(vec![station.clone()])).unwrap();
-            btn.set_sensitive(false);
-        });
-
-        // add_button
-        let add_button: gtk::Button = self.builder.get_object("add_button").unwrap();
-        let sender = self.sender.clone();
-        let station = self.station.clone();
-        add_button.connect_clicked(move |btn| {
-            sender.send(Action::LibraryAddStations(vec![station.clone()])).unwrap();
-            btn.set_sensitive(false);
-        });
-
         // eventbox
+        let station = self.station.clone();
+        let app = self.app.clone();
         let eventbox: gtk::EventBox = self.builder.get_object("eventbox").unwrap();
         let check_button: gtk::CheckButton = self.builder.get_object("check_button").unwrap();
-        let revealer: gtk::Revealer = self.builder.get_object("revealer").unwrap();
+        let sender = self.sender.clone();
         eventbox.connect_button_press_event(move |_, button| {
             // 3 -> Right mouse button
             if button.get_button() == 3 {
                 // TODO: enable selection mode
                 check_button.set_active(true);
             } else {
-                // TODO: handle selection mode - check_button.set_active(!check_button.get_active());
-                revealer.set_reveal_child(!revealer.get_reveal_child());
+                let window = app.get_active_window().unwrap();
+                let station_dialog = StationDialog::new(sender.clone(), station.clone(), &window);
+                station_dialog.show();
             }
             gtk::Inhibit(false)
         });

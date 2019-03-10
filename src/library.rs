@@ -18,7 +18,6 @@ use crate::station_model::StationModel;
 use crate::station_model::{Order, Sorting};
 use crate::station_object::StationObject;
 use crate::widgets::station_listbox::StationListBox;
-use crate::widgets::station_row::ContentType;
 
 lazy_static! {
     static ref LIBRARY_PATH: PathBuf = {
@@ -44,7 +43,7 @@ impl Library {
         let content_box: gtk::Box = builder.get_object("content_box").unwrap();
 
         let library_model = RefCell::new(StationModel::new());
-        let station_listbox = StationListBox::new(sender.clone(), ContentType::Library);
+        let station_listbox = StationListBox::new(sender.clone());
         station_listbox.bind_model(&library_model.borrow());
         content_box.add(&station_listbox.widget);
 
@@ -172,6 +171,22 @@ impl Library {
             }
             Ok(result)
         }
+    }
+
+    pub fn contains_station(station: &Station) -> bool {
+        match Self::read(LIBRARY_PATH.to_path_buf()) {
+            Ok(stations) => {
+                for s in stations {
+                    if &s == station {
+                        return true;
+                    }
+                }
+                return false;
+            }
+            Err(_) => {
+                return false;
+            }
+        };
     }
 }
 

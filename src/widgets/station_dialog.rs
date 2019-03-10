@@ -1,9 +1,14 @@
+use glib::Sender;
 use gtk::prelude::*;
 use libhandy::Dialog;
 use rustio::Station;
 
+use crate::app::Action;
+use crate::library::Library;
+
 pub struct StationDialog {
     pub widget: Dialog,
+    station: Station,
 
     title_label: gtk::Label,
     subtitle_label: gtk::Label,
@@ -11,10 +16,13 @@ pub struct StationDialog {
     homepage_label: gtk::Label,
     tags_label: gtk::Label,
     language_label: gtk::Label,
+
+    builder: gtk::Builder,
+    sender: Sender<Action>,
 }
 
 impl StationDialog {
-    pub fn new(station: &Station, window: &gtk::Window) -> Self {
+    pub fn new(sender: Sender<Action>, station: Station, window: &gtk::Window) -> Self {
         let builder = gtk::Builder::new_from_resource("/de/haeckerfelix/Shortwave/gtk/station_dialog.ui");
         let widget: Dialog = builder.get_object("station_dialog").unwrap();
 
@@ -25,51 +33,76 @@ impl StationDialog {
         let tags_label: gtk::Label = builder.get_object("tags_label").unwrap();
         let language_label: gtk::Label = builder.get_object("language_label").unwrap();
 
+        // Show correct library action
+        let library_action_stack: gtk::Stack = builder.get_object("library_action_stack").unwrap();
+        if Library::contains_station(&station) {
+            library_action_stack.set_visible_child_name("library-remove");
+        } else {
+            library_action_stack.set_visible_child_name("library-add");
+        }
+
         widget.set_transient_for(window);
 
         let dialog = Self {
             widget,
+            station,
             title_label,
             subtitle_label,
             codec_label,
             homepage_label,
             tags_label,
             language_label,
+            builder,
+            sender,
         };
 
-        dialog.reset();
-        dialog.set_station(&station);
+        dialog.setup();
+        dialog.connect_signals();
         dialog
+    }
+
+    fn setup(&self) {
+        self.title_label.set_text(&self.station.name);
+        self.subtitle_label
+            .set_text(&format!("{} {} · {} Votes", self.station.country, self.station.state, self.station.votes));
+
+        if self.station.codec != "" {
+            self.codec_label.set_text(&self.station.codec);
+        }
+        if self.station.homepage != "" {
+            self.homepage_label.set_markup(&format!("<a href=\"{}\">{}</a>", self.station.homepage, self.station.homepage));
+        }
+        if self.station.tags != "" {
+            self.tags_label.set_text(&self.station.tags);
+        }
+        if self.station.language != "" {
+            self.language_label.set_text(&self.station.language);
+        }
     }
 
     pub fn show(&self) {
         self.widget.set_visible(true);
     }
 
-    fn set_station(&self, station: &Station) {
-        self.reset();
+    fn connect_signals(&self) {
+        // remove_button
+        let library_action_stack: gtk::Stack = self.builder.get_object("library_action_stack").unwrap();
+        let remove_button: gtk::Button = self.builder.get_object("remove_button").unwrap();
+        let sender = self.sender.clone();
+        let station = self.station.clone();
+        remove_button.connect_clicked(move |btn| {
+            sender.send(Action::LibraryRemoveStations(vec![station.clone()])).unwrap();
+            library_action_stack.set_visible_child_name("library-add");
+        });
 
-        self.title_label.set_text(&station.name);
-        self.subtitle_label.set_text(&format!("{} {} · {} Votes", station.country, station.state, station.votes));
-
-        if station.codec != "" {
-            self.codec_label.set_text(&station.codec);
-        }
-        if station.homepage != "" {
-            self.homepage_label.set_markup(&format!("<a href=\"{}\">{}</a>", station.homepage, station.homepage));
-        }
-        if station.tags != "" {
-            self.tags_label.set_text(&station.tags);
-        }
-        if station.language != "" {
-            self.language_label.set_text(&station.language);
-        }
-    }
-
-    fn reset(&self) {
-        self.codec_label.set_text("—");
-        self.homepage_label.set_text("—");
-        self.tags_label.set_text("—");
-        self.language_label.set_text("—");
+        // add_button
+        let library_action_stack: gtk::Stack = self.builder.get_object("library_action_stack").unwrap();
+        let add_button: gtk::Button = self.builder.get_object("add_button").unwrap();
+        let sender = self.sender.clone();
+        let station = self.station.clone();
+        add_button.connect_clicked(move |btn| {
+            sender.send(Action::LibraryAddStations(vec![station.clone()])).unwrap();
+            library_action_stack.set_visible_child_name("library-remove");
+        });
     }
 }
