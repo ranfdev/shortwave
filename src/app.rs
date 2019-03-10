@@ -23,7 +23,6 @@ pub enum Action {
     PlaybackSetStation(Station),
     PlaybackStart,
     PlaybackStop,
-    LibraryWrite,
     LibraryImport,
     LibraryExport,
     LibraryAddStations(Vec<Station>),
@@ -98,7 +97,6 @@ impl App {
 
         self.gtk_app.run(&[]);
         self.player.shutdown();
-        self.library.write_data();
     }
 
     fn setup_gaction(&self) {
@@ -112,13 +110,6 @@ impl App {
         self.add_gaction("about", move |_, _| {
             Self::show_about_dialog(window.clone());
         });
-
-        // Save library
-        let sender = self.sender.clone();
-        self.add_gaction("save", move |_, _| {
-            sender.send(Action::LibraryWrite).unwrap();
-        });
-        self.gtk_app.set_accels_for_action("app.save", &["<primary>s"]);
 
         // Search / add stations
         let sender = self.sender.clone();
@@ -213,9 +204,8 @@ impl App {
             }
             Action::PlaybackStart => self.player.set_playback(PlaybackState::Playing),
             Action::PlaybackStop => self.player.set_playback(PlaybackState::Stopped),
-            Action::LibraryWrite => self.library.write_data(),
-            Action::LibraryImport => self.import_library(),
-            Action::LibraryExport => self.export_library(),
+            Action::LibraryImport => self.import_stations(),
+            Action::LibraryExport => self.export_stations(),
             Action::LibraryAddStations(stations) => self.library.add_stations(stations),
             Action::LibraryRemoveStations(stations) => self.library.remove_stations(stations),
             Action::SearchFor(data) => self.search.search_for(data),
@@ -241,31 +231,50 @@ impl App {
         dialog.show();
     }
 
-    fn import_library(&self) {
+    fn import_stations(&self) {
         let import_dialog = gtk::FileChooserNative::new("Select database to import", &self.window.widget, gtk::FileChooserAction::Open, "Import", "Cancel");
         let filter = gtk::FileFilter::new();
         import_dialog.set_filter(&filter);
-        filter.add_mime_type("application/x-sqlite3");
+        filter.add_mime_type("application/json"); // Shortwave library format
+        filter.add_mime_type("application/x-sqlite3"); // Old Gradio library format
+        filter.add_mime_type("application/vnd.sqlite3"); // Old Gradio library format
 
         if gtk::ResponseType::from(import_dialog.run()) == gtk::ResponseType::Accept {
             let path = import_dialog.get_file().unwrap().get_path().unwrap();
             debug!("Import path: {:?}", path);
-            match self.library.import_from_path(&path) {
-                Ok(_) => self.sender.send(Action::ViewShowNotification("Successfully imported library".to_string())).unwrap(),
-                Err(err) => self.sender.send(Action::ViewShowNotification(format!("Could not import library - {}", err.to_string()))).unwrap(),
+            match Library::read(path) {
+                Ok(stations) => {
+                    let message = format!("Successfully imported {} stations.", stations.len());
+                    self.sender.send(Action::ViewShowNotification(message)).unwrap();
+
+                    self.sender.send(Action::LibraryAddStations(stations));
+                }
+                Err(error) => {
+                    let message = format!("Could not import stations: {}", error.to_string());
+                    self.sender.send(Action::ViewShowNotification(message)).unwrap();
+                }
             };
         }
         import_dialog.destroy();
     }
 
-    fn export_library(&self) {
+    fn export_stations(&self) {
         let export_dialog = gtk::FileChooserNative::new("Export database", &self.window.widget, gtk::FileChooserAction::Save, "Export", "Cancel");
+        export_dialog.set_current_name("library.json");
         if gtk::ResponseType::from(export_dialog.run()) == gtk::ResponseType::Accept {
             let path = export_dialog.get_file().unwrap().get_path().unwrap();
             debug!("Export path: {:?}", path);
-            match self.library.export_to_path(&path) {
-                Ok(_) => self.sender.send(Action::ViewShowNotification("Successfully exported library".to_string())).unwrap(),
-                Err(err) => self.sender.send(Action::ViewShowNotification(format!("Could not export library - {}", err.to_string()))).unwrap(),
+            let stations = self.library.to_vec();
+            let count = stations.len();
+            match Library::write(stations, path) {
+                Ok(()) => {
+                    let message = format!("Successfully exported {} stations.", count);
+                    self.sender.send(Action::ViewShowNotification(message)).unwrap();
+                }
+                Err(error) => {
+                    let message = format!("Could not export stations: {}", error.to_string());
+                    self.sender.send(Action::ViewShowNotification(message)).unwrap();
+                }
             };
         }
         export_dialog.destroy();

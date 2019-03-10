@@ -44,24 +44,29 @@ impl StationModel {
     }
 
     pub fn add_station(&mut self, station: Station) {
-        let object = StationObject::new(station.clone());
-
-        let sorting = self.sorting.clone();
-        let order = self.order.clone();
-        self.model.insert_sorted(&object, move |a, b| Self::station_cmp(a, b, sorting.clone(), order.clone()));
+        if !self.index(&station).is_some() {
+            let object = StationObject::new(station.clone());
+            let sorting = self.sorting.clone();
+            let order = self.order.clone();
+            self.model.insert_sorted(&object, move |a, b| Self::station_cmp(a, b, sorting.clone(), order.clone()));
+        }
     }
 
-    pub fn remove_station(&mut self, station: Station) {
+    pub fn remove_station(&mut self, station: &Station) {
+        self.index(station).map(|index| self.model.remove(index));
+    }
+
+    fn index(&self, station: &Station) -> Option<u32> {
         for i in 0..self.model.get_n_items() {
             let gobject = self.model.get_object(i).unwrap();
             let station_object = gobject.downcast_ref::<StationObject>().expect("StationObject is of wrong type");
             let s = station_object.to_station();
 
-            if s == station {
-                self.model.remove(i);
-                break;
+            if &s == station {
+                return Some(i);
             }
         }
+        None
     }
 
     pub fn set_sorting(&mut self, sorting: Sorting, order: Order) {
@@ -98,23 +103,5 @@ impl StationModel {
             Sorting::Votes => station_a.votes.parse::<i32>().unwrap().cmp(&station_b.votes.parse::<i32>().unwrap()),
             Sorting::Bitrate => station_a.bitrate.parse::<i32>().unwrap().cmp(&station_b.bitrate.parse::<i32>().unwrap()),
         }
-    }
-}
-
-impl Iterator for StationModel {
-    type Item = Station;
-
-    fn next(&mut self) -> Option<Station> {
-        let max = self.len();
-        let mut result = None;
-
-        if self.iter_id < max {
-            let gobject = self.model.get_object(self.iter_id).unwrap();
-            let station_object = gobject.downcast_ref::<StationObject>().expect("StationObject is of wrong type");
-            result = Some(station_object.to_station());
-            self.iter_id = self.iter_id + 1;
-        }
-
-        result
     }
 }

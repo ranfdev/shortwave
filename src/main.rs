@@ -8,6 +8,9 @@ extern crate quick_error;
 #[macro_use]
 extern crate glib;
 
+#[macro_use]
+extern crate lazy_static;
+
 mod app;
 mod config;
 mod library;

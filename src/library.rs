@@ -1,3 +1,4 @@
+use gio::prelude::*;
 use glib::Sender;
 use gtk::prelude::*;
 use rusqlite::Connection;
@@ -15,19 +16,23 @@ use crate::app::Action;
 use crate::config;
 use crate::station_model::StationModel;
 use crate::station_model::{Order, Sorting};
+use crate::station_object::StationObject;
 use crate::widgets::station_listbox::StationListBox;
 use crate::widgets::station_row::ContentType;
 
-static SQL_READ: &str = "SELECT station_id, collection_name, library.collection_id
-                        FROM library LEFT JOIN collections ON library.collection_id = collections.collection_id ORDER BY library.collection_id ASC;";
-static SQL_INIT_LIBRARY: &str = "CREATE TABLE \"library\" ('station_id' INTEGER, 'collection_id' INTEGER);";
-static SQL_INIT_COLLECTIONS: &str = " CREATE TABLE \"collections\" ('collection_id' INTEGER, 'collection_name' TEXT)";
+lazy_static! {
+    static ref LIBRARY_PATH: PathBuf = {
+        let mut path = glib::get_user_data_dir().unwrap();
+        path.push(config::NAME);
+        path.push("library.json");
+        path
+    };
+}
 
 pub struct Library {
     pub widget: gtk::Box,
     library_model: RefCell<StationModel>,
 
-    db_path: PathBuf,
     builder: gtk::Builder,
     sender: Sender<Action>,
 }
@@ -43,8 +48,6 @@ impl Library {
         station_listbox.bind_model(&library_model.borrow());
         content_box.add(&station_listbox.widget);
 
-        let db_path = Self::get_database_path("shortwave.db").expect("Could not open database path...");
-
         let logo_image: gtk::Image = builder.get_object("logo_image").unwrap();
         logo_image.set_from_icon_name(Some(format!("{}-symbolic", config::APP_ID).as_str()), gtk::IconSize::__Unknown(128));
         let welcome_text: gtk::Label = builder.get_object("welcome_text").unwrap();
@@ -53,15 +56,21 @@ impl Library {
         let library = Self {
             widget,
             library_model,
-            db_path,
             builder,
             sender,
         };
 
-        // read database and import data
-        library.import_from_path(&library.db_path).expect("Could not import stations from database");
-
         library.setup_signals();
+
+        // Read stations
+        match Self::read(LIBRARY_PATH.to_path_buf()) {
+            Ok(stations) => library.add_stations(stations),
+            Err(error) => {
+                let message = format!("Could not read library data: {}", error.to_string());
+                library.sender.send(Action::ViewShowNotification(message)).unwrap();
+            }
+        };
+
         library
     }
 
@@ -70,143 +79,100 @@ impl Library {
         for station in stations {
             self.library_model.borrow_mut().add_station(station.clone());
         }
-        self.update_visible_page();
     }
 
     pub fn remove_stations(&self, stations: Vec<Station>) {
         debug!("Remove {} station(s)", stations.len());
         for station in stations {
-            self.library_model.borrow_mut().remove_station(station.clone());
+            self.library_model.borrow_mut().remove_station(&station);
         }
-        self.update_visible_page();
-    }
-
-    pub fn write_data(&self) {
-        debug!("Write library data to disk...");
-        Self::write_stations_to_db(&self.db_path, self.library_model.borrow().clone()).expect("Could not write stations to database.");
-    }
-
-    pub fn import_from_path(&self, path: &PathBuf) -> Result<(), LibraryError> {
-        // test sql connection
-        let connection = Connection::open(path.clone())?;
-        let mut _stmt = connection.prepare(SQL_READ)?;
-
-        let sender = self.sender.clone();
-        let p = path.clone();
-        self.set_visible_page("loading");
-        thread::spawn(move || {
-            match Self::read_stations_from_db(&p) {
-                Ok(stations) => sender.send(Action::LibraryAddStations(stations)).unwrap(),
-                Err(err) => {
-                    sender.send(Action::LibraryAddStations(Vec::new())).unwrap();
-                    sender.send(Action::ViewShowNotification(format!("Could not load stations - {}", err.to_string()).to_string())).unwrap();
-                }
-            };
-        });
-
-        Ok(())
-    }
-
-    pub fn export_to_path(&self, path: &PathBuf) -> Result<(), LibraryError> {
-        Self::write_stations_to_db(&path, self.library_model.borrow().clone()).expect("Could not export database.");
-        Ok(())
     }
 
     pub fn set_sorting(&self, sorting: Sorting, order: Order) {
         self.library_model.borrow_mut().set_sorting(sorting, order);
     }
 
-    fn read_stations_from_db(path: &PathBuf) -> Result<Vec<Station>, LibraryError> {
-        debug!("Read stations from \"{:?}\"", path);
-        let mut result = Vec::new();
-        let mut client = Client::new("http://www.radio-browser.info");
-        let connection = Connection::open(path.clone())?;
-        let mut stmt = connection.prepare(SQL_READ)?;
-        let mut rows = stmt.query(&[])?;
+    pub fn to_vec(&self) -> Vec<Station> {
+        Self::model_to_vec(&self.library_model.borrow().model)
+    }
 
-        while let Some(result_row) = rows.next() {
-            let row = result_row.unwrap();
-            let station_id: u32 = row.get(0);
+    fn model_to_vec(model: &gio::ListStore) -> Vec<Station> {
+        let mut stations = Vec::new();
+        for i in 0..model.get_n_items() {
+            let gobject = model.get_object(i).unwrap();
+            let station_object = gobject.downcast_ref::<StationObject>().expect("StationObject is of wrong type");
+            stations.insert(0, station_object.to_station());
+        }
+        stations
+    }
 
-            match client.get_station_by_id(station_id)? {
-                Some(station) => {
-                    info!("Found Station: {}", station.name);
-                    result.insert(0, station);
-                }
-                None => warn!("Could not fetch station with ID {}", station_id),
+    fn setup_signals(&self) {
+        let sender = self.sender.clone();
+        self.library_model.borrow().model.connect_items_changed(move |model, pos, removed, added| {
+            // Check if data got changed
+            if removed == 1 || added == 1 {
+                // Convert gio::ListStore into Vec<Station>
+                let stations = Self::model_to_vec(model);
+
+                // Write new data to disk
+                match Self::write(stations, LIBRARY_PATH.to_path_buf()) {
+                    Ok(()) => (),
+                    Err(error) => {
+                        let message = format!("Could not write library data: {}", error.to_string());
+                        sender.send(Action::ViewShowNotification(message)).unwrap();
+                    }
+                };
             }
-        }
-        Ok(result)
+        });
     }
 
-    fn write_stations_to_db(path: &PathBuf, stations: StationModel) -> Result<(), LibraryError> {
-        let tmpdb = Self::get_database_path("tmp.db")?;
+    pub fn write(stations: Vec<Station>, path: PathBuf) -> Result<(), LibraryError> {
+        debug!("Write library data to: {:?}", path);
 
-        info!("Delete previous database data...");
-        let _ = fs::remove_file(path);
-        let _ = fs::remove_file(&tmpdb);
-        let _ = Self::create_database(&tmpdb);
+        // Convert Vec<Station> into text
+        let data = serde_json::to_string(&stations)?;
 
-        info!("Write stations to \"{:?}\"", tmpdb);
-        let connection = Connection::open(tmpdb.clone())?;
-        for station in stations {
-            let mut stmt = connection.prepare(&format!("INSERT INTO library VALUES ('{}', '0');", station.id.to_string(),))?;
-            stmt.execute(&[])?;
-        }
+        // Create missing folders, if necessary
+        let mut fpath = path.clone();
+        fpath.pop();
+        fs::create_dir_all(fpath)?;
 
-        debug!("Move tmp.db to real path...");
-        let _ = fs::copy(&tmpdb, &path);
-
+        // Write the actual data
+        fs::write(path, data)?;
         Ok(())
     }
 
-    fn get_database_path(name: &str) -> Result<PathBuf, LibraryError> {
-        let mut path = glib::get_user_data_dir().unwrap();
+    pub fn read(path: PathBuf) -> Result<Vec<Station>, LibraryError> {
+        debug!("Read library data from: {:?}", path);
 
-        if !path.exists() {
-            fs::create_dir(&path.to_str().unwrap())?;
-        }
-
-        path.push("shortwave");
-        if !path.exists() {
-            fs::create_dir(&path.to_str().unwrap())?;
-        }
-
-        path.push(name);
-        if !path.exists() {
-            Self::create_database(&path)?;
-        }
-
-        Ok(path)
-    }
-
-    fn create_database(path: &PathBuf) -> Result<(), LibraryError> {
-        info!("Create new database...");
-        File::create(&path.to_str().unwrap())?;
-
-        info!("Initialize database...");
-        let connection = Connection::open(path.clone())?;
-        let mut stmt = connection.prepare(SQL_INIT_LIBRARY).expect("Could not initialize sqlite database");
-        stmt.execute(&[])?;
-        let mut stmt = connection.prepare(SQL_INIT_COLLECTIONS).expect("Could not initialize sqlite database");
-        stmt.execute(&[])?;
-        Ok(())
-    }
-
-    fn update_visible_page(&self) {
-        if self.library_model.borrow().len() != 0 {
-            self.set_visible_page("content");
+        if path.extension().is_some() && path.extension().unwrap().to_str() == Some("json") {
+            // New Shortwave library format (.json)
+            let data = fs::read_to_string(path)?;
+            let stations: Vec<Station> = serde_json::from_str(&data)?;
+            Ok(stations)
         } else {
-            self.set_visible_page("empty");
+            // Old Gradio library format (.db)
+            let mut result = Vec::new();
+            let mut client = Client::new("http://www.radio-browser.info");
+            let connection = Connection::open(path.clone())?;
+            let mut stmt = connection.prepare("SELECT station_id FROM library;")?;
+            let mut rows = stmt.query(&[])?;
+
+            while let Some(result_row) = rows.next() {
+                let row = result_row.unwrap();
+                let station_id: u32 = row.get(0);
+
+                match client.get_station_by_id(station_id)? {
+                    Some(station) => {
+                        info!("Found Station: {}", station.name);
+                        result.insert(0, station);
+                    }
+                    None => warn!("Could not fetch station with ID {}", station_id),
+                }
+            }
+            Ok(result)
         }
     }
-
-    fn set_visible_page(&self, name: &str) {
-        let stack: gtk::Stack = self.builder.get_object("library_stack").unwrap();
-        stack.set_visible_child_name(name);
-    }
-
-    fn setup_signals(&self) {}
 }
 
 quick_error! {
@@ -221,13 +187,19 @@ quick_error! {
         Sqlite(err: rusqlite::Error) {
             from()
             description("sqlite error")
-            display("Database error: {}", err)
+            display("Gradio database error: {}", err)
             cause(err)
         }
         Restson(err: restson::Error) {
             from()
             description("restson error")
             display("Network error: {}", err)
+            cause(err)
+        }
+        Serde(err: serde_json::error::Error) {
+            from()
+            description("serde error")
+            display("Parser error: {}", err)
             cause(err)
         }
     }
