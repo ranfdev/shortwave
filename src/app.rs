@@ -8,9 +8,9 @@ use std::rc::Rc;
 
 use crate::config;
 use crate::library::Library;
+use crate::model::{Order, Sorting};
 use crate::player::{PlaybackState, Player};
 use crate::search::Search;
-use crate::station_model::{Order, Sorting};
 use crate::window::{View, Window};
 
 #[derive(Debug, Clone)]
@@ -246,8 +246,7 @@ impl App {
                 Ok(stations) => {
                     let message = format!("Successfully imported {} stations.", stations.len());
                     self.sender.send(Action::ViewShowNotification(message)).unwrap();
-
-                    self.sender.send(Action::LibraryAddStations(stations));
+                    self.sender.send(Action::LibraryAddStations(stations)).unwrap();
                 }
                 Err(error) => {
                     let message = format!("Could not import stations: {}", error.to_string());

@@ -3,8 +3,8 @@ use gtk::prelude::*;
 use libhandy::{Column, ColumnExt};
 
 use crate::app::Action;
-use crate::station_model::StationModel;
-use crate::station_object::StationObject;
+use crate::model::ObjectWrapper;
+use crate::model::StationModel;
 use crate::widgets::station_row::StationRow;
 
 pub struct StationListBox {
@@ -36,7 +36,7 @@ impl StationListBox {
         let sender = self.sender.clone();
 
         self.listbox.bind_model(&model.model, move |station| {
-            let row = StationRow::new(sender.clone(), station.downcast_ref::<StationObject>().unwrap().to_station());
+            let row = StationRow::new(sender.clone(), station.downcast_ref::<ObjectWrapper>().unwrap().deserialize());
             row.widget.upcast::<gtk::Widget>()
         });
     }

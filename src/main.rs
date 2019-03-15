@@ -11,16 +11,16 @@ extern crate glib;
 #[macro_use]
 extern crate lazy_static;
 
+mod model;
+mod player;
+mod widgets;
+
 mod app;
 mod config;
 mod library;
-mod player;
 mod search;
 mod song;
 mod static_resource;
-mod station_model;
-mod station_object;
-mod widgets;
 mod window;
 
 use crate::app::App;

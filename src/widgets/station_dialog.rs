@@ -90,7 +90,7 @@ impl StationDialog {
         let remove_button: gtk::Button = self.builder.get_object("remove_button").unwrap();
         let sender = self.sender.clone();
         let station = self.station.clone();
-        remove_button.connect_clicked(move |btn| {
+        remove_button.connect_clicked(move |_| {
             sender.send(Action::LibraryRemoveStations(vec![station.clone()])).unwrap();
             library_action_stack.set_visible_child_name("library-add");
         });
@@ -100,7 +100,7 @@ impl StationDialog {
         let add_button: gtk::Button = self.builder.get_object("add_button").unwrap();
         let sender = self.sender.clone();
         let station = self.station.clone();
-        add_button.connect_clicked(move |btn| {
+        add_button.connect_clicked(move |_| {
             sender.send(Action::LibraryAddStations(vec![station.clone()])).unwrap();
             library_action_stack.set_visible_child_name("library-remove");
         });

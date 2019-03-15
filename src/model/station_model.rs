@@ -3,7 +3,7 @@ use gio::prelude::*;
 use glib::prelude::*;
 use rustio::Station;
 
-use crate::station_object::StationObject;
+use crate::model::ObjectWrapper;
 
 #[derive(Clone, Debug)]
 pub enum Sorting {
@@ -27,25 +27,21 @@ pub struct StationModel {
     pub model: gio::ListStore,
     sorting: Sorting,
     order: Order,
-
-    iter_id: u32,
 }
 
 impl StationModel {
     pub fn new() -> Self {
-        let model = gio::ListStore::new(StationObject::static_type());
+        let model = gio::ListStore::new(ObjectWrapper::static_type());
 
         let sorting = Sorting::Name;
         let order = Order::Ascending;
 
-        let iter_id = 0;
-
-        Self { model, sorting, order, iter_id }
+        Self { model, sorting, order }
     }
 
     pub fn add_station(&mut self, station: Station) {
         if !self.index(&station).is_some() {
-            let object = StationObject::new(station.clone());
+            let object = ObjectWrapper::new(station.clone());
             let sorting = self.sorting.clone();
             let order = self.order.clone();
             self.model.insert_sorted(&object, move |a, b| Self::station_cmp(a, b, sorting.clone(), order.clone()));
@@ -59,8 +55,8 @@ impl StationModel {
     fn index(&self, station: &Station) -> Option<u32> {
         for i in 0..self.model.get_n_items() {
             let gobject = self.model.get_object(i).unwrap();
-            let station_object = gobject.downcast_ref::<StationObject>().expect("StationObject is of wrong type");
-            let s = station_object.to_station();
+            let station_object = gobject.downcast_ref::<ObjectWrapper>().expect("ObjectWrapper is of wrong type");
+            let s: Station = station_object.deserialize();
 
             if &s == station {
                 return Some(i);
@@ -80,13 +76,9 @@ impl StationModel {
         self.model.remove_all();
     }
 
-    pub fn len(&self) -> u32 {
-        self.model.get_n_items()
-    }
-
     fn station_cmp(a: &gio::Object, b: &gio::Object, sorting: Sorting, order: Order) -> std::cmp::Ordering {
-        let mut station_a: Station = a.downcast_ref::<StationObject>().unwrap().to_station();
-        let mut station_b: Station = b.downcast_ref::<StationObject>().unwrap().to_station();
+        let mut station_a: Station = a.downcast_ref::<ObjectWrapper>().unwrap().deserialize();
+        let mut station_b: Station = b.downcast_ref::<ObjectWrapper>().unwrap().deserialize();
 
         if order == Order::Descending {
             let tmp = station_a;

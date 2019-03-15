@@ -6,17 +6,15 @@ use rustio::{Client, Station};
 
 use std::cell::RefCell;
 use std::fs;
-use std::fs::File;
 use std::io;
 use std::path::PathBuf;
 use std::result::Result;
-use std::thread;
 
 use crate::app::Action;
 use crate::config;
-use crate::station_model::StationModel;
-use crate::station_model::{Order, Sorting};
-use crate::station_object::StationObject;
+use crate::model::ObjectWrapper;
+use crate::model::StationModel;
+use crate::model::{Order, Sorting};
 use crate::widgets::station_listbox::StationListBox;
 
 lazy_static! {
@@ -32,7 +30,6 @@ pub struct Library {
     pub widget: gtk::Box,
     library_model: RefCell<StationModel>,
 
-    builder: gtk::Builder,
     sender: Sender<Action>,
 }
 
@@ -52,12 +49,7 @@ impl Library {
         let welcome_text: gtk::Label = builder.get_object("welcome_text").unwrap();
         welcome_text.set_text(format!("Welcome to {}", config::NAME).as_str());
 
-        let library = Self {
-            widget,
-            library_model,
-            builder,
-            sender,
-        };
+        let library = Self { widget, library_model, sender };
 
         library.setup_signals();
 
@@ -99,15 +91,15 @@ impl Library {
         let mut stations = Vec::new();
         for i in 0..model.get_n_items() {
             let gobject = model.get_object(i).unwrap();
-            let station_object = gobject.downcast_ref::<StationObject>().expect("StationObject is of wrong type");
-            stations.insert(0, station_object.to_station());
+            let station_object = gobject.downcast_ref::<ObjectWrapper>().expect("ObjectWrapper is of wrong type");
+            stations.insert(0, station_object.deserialize());
         }
         stations
     }
 
     fn setup_signals(&self) {
         let sender = self.sender.clone();
-        self.library_model.borrow().model.connect_items_changed(move |model, pos, removed, added| {
+        self.library_model.borrow().model.connect_items_changed(move |model, _, removed, added| {
             // Check if data got changed
             if removed == 1 || added == 1 {
                 // Convert gio::ListStore into Vec<Station>

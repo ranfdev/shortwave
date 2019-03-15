@@ -5,7 +5,7 @@ use rustio::{Client, StationSearch};
 use std::cell::RefCell;
 
 use crate::app::Action;
-use crate::station_model::StationModel;
+use crate::model::StationModel;
 use crate::widgets::station_listbox::StationListBox;
 
 pub struct Search {
