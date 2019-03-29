@@ -4,6 +4,7 @@
          xmlns:foaf="http://xmlns.com/foaf/0.1/"
          xmlns:gnome="http://api.gnome.org/doap-extensions#"
          xmlns="http://usefulinc.com/ns/doap#">
+         
   <name xml:lang="en">Shortwave</name>
   <shortdesc xml:lang="en">
     Radio app for GNOME
@@ -14,10 +15,12 @@
   <bug-database rdf:resource="https://gitlab.gnome.org/World/Shortwave/issues" />
   <category rdf:resource="http://api.gnome.org/doap-extensions#apps" />
   <programming-language>Rust</programming-language>
+  
   <maintainer>
     <foaf:Person>
       <foaf:name>Felix Häcker</foaf:name>
       <foaf:mbox rdf:resource="mailto:haeckerfelix@gnome.org" />
+      <gnome:userid>haeckerfelix</gnome:userid>
     </foaf:Person>
   </maintainer>
 </Project>
