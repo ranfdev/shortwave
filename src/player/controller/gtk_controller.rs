@@ -58,11 +58,11 @@ impl GtkController {
             error_label,
         };
 
-        controller.connect_signals();
+        controller.setup_signals();
         controller
     }
 
-    fn connect_signals(&self) {
+    fn setup_signals(&self) {
         // start_playback_button
         let sender = self.sender.clone();
         self.start_playback_button.connect_clicked(move |_| {

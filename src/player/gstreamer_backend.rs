@@ -1,5 +1,12 @@
+use glib::Sender;
 use gstreamer::prelude::*;
-use gstreamer::{Bin, Bus, Element, ElementFactory, Pad, PadProbeId, Pipeline, State};
+use gstreamer::{Bin, Element, ElementFactory, Pad, PadProbeId, Pipeline, State};
+
+use std::path::PathBuf;
+use std::sync::{Arc, Mutex};
+
+use crate::player::playback_state::PlaybackState;
+use crate::song::Song;
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////////
 //                                                                                                      //
@@ -27,6 +34,13 @@ use gstreamer::{Bin, Bus, Element, ElementFactory, Pad, PadProbeId, Pipeline, St
 //                                                                                                      //
 //////////////////////////////////////////////////////////////////////////////////////////////////////////
 
+#[derive(Clone)]
+pub enum GstreamerMessage {
+    SongTitleChanged(String),
+    PlaybackStateChanged(PlaybackState),
+    RecordingStopped,
+}
+
 #[allow(dead_code)]
 pub struct PlayerBackend {
     pipeline: Pipeline,
@@ -43,10 +57,13 @@ pub struct PlayerBackend {
     muxsinkbin: Option<Bin>,
     file_srcpad: Pad,
     file_blockprobe_id: Option<PadProbeId>,
+
+    current_title: Arc<Mutex<String>>,
+    sender: Sender<GstreamerMessage>,
 }
 
 impl PlayerBackend {
-    pub fn new() -> Self {
+    pub fn new(sender: Sender<GstreamerMessage>) -> Self {
         // create gstreamer pipeline
         let pipeline = Pipeline::new("recorder_pipeline");
 
@@ -94,7 +111,24 @@ impl PlayerBackend {
             }
         });
 
-        let mut pipeline = Self {
+        // Current song title. We need this variable to check if the title have changed.
+        let current_title = Arc::new(Mutex::new(String::new()));
+
+        // listen for new pipeline / bus messages
+        let ct = current_title.clone();
+        let bus = pipeline.get_bus().expect("Unable to get pipeline bus");
+        let s = sender.clone();
+        gtk::timeout_add(250, move || {
+            while bus.have_pending() {
+                bus.pop().map(|message| {
+                    //debug!("new message {:?}", message);
+                    Self::parse_bus_message(&message, s.clone(), ct.clone());
+                });
+            }
+            Continue(true)
+        });
+
+        let pipeline = Self {
             pipeline,
             uridecodebin,
             audioconvert,
@@ -106,39 +140,19 @@ impl PlayerBackend {
             muxsinkbin: None,
             file_srcpad,
             file_blockprobe_id: None,
+            current_title,
+            sender,
         };
 
-        pipeline.create_muxsinkbin("/dev/null");
         pipeline
     }
 
     pub fn set_state(&self, state: gstreamer::State) {
+        if state == gstreamer::State::Null {
+            self.sender.send(GstreamerMessage::PlaybackStateChanged(PlaybackState::Stopped)).unwrap();
+        }
+
         let _ = self.pipeline.set_state(state);
-    }
-
-    pub fn get_pipeline_bus(&self) -> Bus {
-        self.pipeline.get_bus().expect("Unable to get pipeline bus")
-    }
-
-    pub fn block_dataflow(&mut self) {
-        // File branch
-        let muxsinkbin = self.muxsinkbin.clone();
-        let file_id = self
-            .file_srcpad
-            .add_probe(gstreamer::PadProbeType::BLOCK_DOWNSTREAM, move |_, _| {
-                // Dataflow is blocked
-                debug!("Pad is blocked now.");
-
-                debug!("Push EOS into muxsinkbin sinkpad...");
-                let sinkpad = muxsinkbin.clone().unwrap().get_static_pad("sink").unwrap();
-                sinkpad.send_event(gstreamer::Event::new_eos().build());
-
-                gstreamer::PadProbeReturn::Ok
-            })
-            .unwrap();
-
-        // We need the padprobe id later to remove the block probe
-        self.file_blockprobe_id = Some(file_id);
     }
 
     pub fn new_source_uri(&mut self, source: &str) {
@@ -152,24 +166,80 @@ impl PlayerBackend {
         let _ = self.pipeline.set_state(State::Playing);
     }
 
-    pub fn new_filesink_location(&mut self, location: &str) {
-        debug!("Update filesink location to \"{}\"...", location);
+    pub fn start_recording(&mut self, path: PathBuf) {
+        debug!("Start recording to \"{:?}\"...", path);
 
-        debug!("Destroy old muxsinkbin");
-        let muxsinkbin = self.muxsinkbin.take().unwrap();
-        let _ = muxsinkbin.set_state(State::Null);
-        self.pipeline.remove(&muxsinkbin).unwrap();
+        debug!("Destroy old muxsinkbin...");
+        if self.muxsinkbin.is_some() {
+            let muxsinkbin = self.muxsinkbin.take().unwrap();
+            let _ = muxsinkbin.set_state(State::Null);
+            self.pipeline.remove(&muxsinkbin).unwrap();
+        } else {
+            debug!("No muxsinkbin available - nothing to destroy");
+        }
 
         debug!("Create new muxsinkbin");
-        self.create_muxsinkbin(location);
+        self.create_muxsinkbin(path);
 
-        debug!("Remove block probe..."); //TODO: Fix crash here... (called `Option::unwrap()` on a `None) 169
-        self.file_srcpad.remove_probe(self.file_blockprobe_id.take().unwrap());
+        // Remove block probe id, if available
+        debug!("Remove block probe...");
+        match self.file_blockprobe_id.take() {
+            Some(id) => self.file_srcpad.remove_probe(id),
+            None => (),
+        }
 
         debug!("Everything ok.");
     }
 
-    fn create_muxsinkbin(&mut self, location: &str) {
+    pub fn stop_recording(&mut self) -> Option<Song> {
+        debug!("Stop recording... ({:?})", self.muxsinkbin);
+
+        let muxsinkbin = self.muxsinkbin.clone();
+        if muxsinkbin.is_some() {
+            // Get location property from muxsinkbin
+            let path_value = muxsinkbin.clone().unwrap().get_by_name("filesink").unwrap().get_property("location").unwrap();
+            let path_string: String = path_value.get().unwrap();
+            let path: PathBuf = PathBuf::from(path_string);
+
+            // Remove file extension (.ogg) from filename
+            let mut title_path = path.clone();
+            title_path.set_extension("");
+            let title = title_path.file_name().unwrap().to_str().unwrap();
+
+            let file_id = self
+                .file_srcpad
+                .add_probe(gstreamer::PadProbeType::BLOCK_DOWNSTREAM, move |_, _| {
+                    // Dataflow is blocked
+                    debug!("Push EOS into muxsinkbin sinkpad...");
+                    let sinkpad = muxsinkbin.clone().unwrap().get_static_pad("sink").unwrap();
+                    sinkpad.send_event(gstreamer::Event::new_eos().build());
+
+                    gstreamer::PadProbeReturn::Ok
+                })
+                .unwrap();
+
+            // We need the padprobe id later to remove the block probe
+            self.file_blockprobe_id = Some(file_id);
+
+            // Create song and return it
+            let song = Song::new(title, path.clone());
+            return Some(song);
+        } else {
+            debug!("No muxsinkbin available - nothing to stop");
+        }
+
+        None
+    }
+
+    pub fn is_recording(&self) -> bool {
+        self.muxsinkbin.is_some()
+    }
+
+    pub fn get_current_song_title(&self) -> String {
+        self.current_title.lock().unwrap().clone()
+    }
+
+    fn create_muxsinkbin(&mut self, path: PathBuf) {
         // Create vorbisenc
         let vorbisenc = ElementFactory::make("vorbisenc", "vorbisenc").unwrap();
 
@@ -178,8 +248,7 @@ impl PlayerBackend {
 
         // Create filesink
         let filesink = ElementFactory::make("filesink", "filesink").unwrap();
-        filesink.set_property("location", &location).unwrap();
-
+        filesink.set_property("location", &path.to_str().unwrap()).unwrap();
         // Create bin
         let bin = Bin::new("bin");
         bin.set_property("message-forward", &true).unwrap();
@@ -204,64 +273,47 @@ impl PlayerBackend {
 
         self.muxsinkbin = Some(bin);
     }
-}
 
-/////////////////////////////////////////////////////////////////////////////////////
-//                                                                                 //
-//  # Gstreamer Pipeline                                                           //
-//                                                                                 //
-//    ---------      -----------      -----------      --------      ----------    //
-//   | filesrc | -> | decodebin | -> | vorbisenc | -> | oggmux | -> | filesink |   //
-//    ---------      -----------      -----------      --------      ----------    //
-//                                                                                 //
-//  We need a separate pipeline for exporting a song, otherwise the duration would //
-//  be wrong. For reference:                                                       //
-//                                                                                 //
-//  http://gstreamer-devel.966125.n4.nabble.com/Dynamically-change-filesink-File-duration-problem-td4689353.html
-//                                                                                 //
-/////////////////////////////////////////////////////////////////////////////////////
+    fn parse_bus_message(message: &gstreamer::Message, sender: Sender<GstreamerMessage>, current_title: Arc<Mutex<String>>) {
+        match message.view() {
+            gstreamer::MessageView::Tag(tag) => {
+                tag.get_tags().get::<gstreamer::tags::Title>().map(|t| {
+                    let new_title = t.get().unwrap().to_string();
 
-#[derive(Clone)]
-pub struct ExportBackend {
-    pipeline: Pipeline,
-    path: String,
-    export_path: String,
-}
+                    // only send message if song title really have changed.
+                    if *current_title.lock().unwrap() != new_title {
+                        *current_title.lock().unwrap() = new_title.clone();
+                        sender.send(GstreamerMessage::SongTitleChanged(new_title)).unwrap();
+                    }
+                });
+            }
+            gstreamer::MessageView::StateChanged(sc) => {
+                let playback_state = match sc.get_current() {
+                    gstreamer::State::Playing => PlaybackState::Playing,
+                    gstreamer::State::Paused => PlaybackState::Loading,
+                    gstreamer::State::Ready => PlaybackState::Loading,
+                    _ => PlaybackState::Stopped,
+                };
 
-impl ExportBackend {
-    pub fn new(path: &str, export_path: &str) -> Self {
-        let pipeline = Pipeline::new("export_pipeline");
-
-        let filesrc = ElementFactory::make("filesrc", "filesrc").unwrap();
-        let decodebin = ElementFactory::make("decodebin", "decodebin").unwrap();
-        let vorbisenc = ElementFactory::make("vorbisenc", "vorbisenc").unwrap();
-        let oggmux = ElementFactory::make("oggmux", "oggmux").unwrap();
-        let filesink = ElementFactory::make("filesink", "filesink").unwrap();
-
-        pipeline.add_many(&[&filesrc, &decodebin, &vorbisenc, &oggmux, &filesink]).unwrap();
-        Element::link_many(&[&vorbisenc, &oggmux, &filesink]).unwrap();
-        Element::link_many(&[&filesrc, &decodebin]).unwrap();
-
-        let vorbis = vorbisenc.clone();
-        decodebin.connect_pad_added(move |_, src_pad| {
-            let sink_pad = vorbis.get_static_pad("sink").expect("Failed to get static sink pad from convert");
-            let _ = src_pad.link(&sink_pad);
-        });
-
-        filesrc.set_property("location", &path).unwrap();
-        filesink.set_property("location", &export_path).unwrap();
-
-        Self {
-            pipeline,
-            path: path.to_string(),
-            export_path: export_path.to_string(),
-        }
-    }
-
-    pub fn start(&self) {
-        debug!("* Export song **");
-        debug!("Cached song path: {}", self.path);
-        debug!("Export song path: {}", self.export_path);
-        let _ = self.pipeline.set_state(State::Playing);
+                sender.send(GstreamerMessage::PlaybackStateChanged(playback_state)).unwrap();
+            }
+            gstreamer::MessageView::Element(element) => {
+                let structure = element.get_structure().unwrap();
+                if structure.get_name() == "GstBinForwarded" {
+                    let message: gstreamer::message::Message = structure.get("message").unwrap();
+                    if let gstreamer::MessageView::Eos(_) = &message.view() {
+                        // muxsinkbin got EOS which means the current song got successfully saved.
+                        debug!("muxsinkbin got EOS...");
+                        sender.send(GstreamerMessage::RecordingStopped).unwrap();
+                    }
+                }
+            }
+            gstreamer::MessageView::Error(err) => {
+                let msg = err.get_error().to_string();
+                warn!("Gstreamer Error: {:?}", msg);
+                sender.send(GstreamerMessage::PlaybackStateChanged(PlaybackState::Failure(msg))).unwrap();
+            }
+            _ => (),
+        };
     }
 }

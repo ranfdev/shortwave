@@ -33,7 +33,7 @@ impl MprisController {
             station: Cell::new(None),
         };
 
-        controller.connect_signals();
+        controller.setup_signals();
         controller
     }
 
@@ -57,7 +57,7 @@ impl MprisController {
         self.mpris.set_metadata(metadata);
     }
 
-    fn connect_signals(&self) {
+    fn setup_signals(&self) {
         // mpris raise
         let sender = self.sender.clone();
         self.mpris.connect_raise(move || {

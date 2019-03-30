@@ -57,14 +57,13 @@ impl StationDialog {
         };
 
         dialog.setup();
-        dialog.connect_signals();
+        dialog.setup_signals();
         dialog
     }
 
     fn setup(&self) {
         self.title_label.set_text(&self.station.name);
-        self.subtitle_label
-            .set_text(&format!("{} {} · {} Votes", self.station.country, self.station.state, self.station.votes));
+        self.subtitle_label.set_text(&format!("{} {} · {} Votes", self.station.country, self.station.state, self.station.votes));
 
         if self.station.codec != "" {
             self.codec_label.set_text(&self.station.codec);
@@ -84,7 +83,7 @@ impl StationDialog {
         self.widget.set_visible(true);
     }
 
-    fn connect_signals(&self) {
+    fn setup_signals(&self) {
         // remove_button
         let library_action_stack: gtk::Stack = self.builder.get_object("library_action_stack").unwrap();
         let remove_button: gtk::Button = self.builder.get_object("remove_button").unwrap();

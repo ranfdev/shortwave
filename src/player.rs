@@ -1,16 +1,19 @@
-use glib::Sender;
-use gstreamer::prelude::*;
+use gio::prelude::*;
+use glib::{Receiver, Sender};
 use gtk::prelude::*;
 use rustio::{Client, Station};
 
 use std::cell::RefCell;
+use std::fs;
+use std::path::PathBuf;
 use std::rc::Rc;
 use std::sync::{Arc, Mutex};
 use std::thread;
 
 use crate::app::Action;
+use crate::config;
 use crate::player::controller::{GtkController, MprisController};
-use crate::song::Song;
+use crate::player::gstreamer_backend::GstreamerMessage;
 use crate::widgets::song_listbox::SongListBox;
 
 ////////////////////////////////////////////////////////////////////////////////////////////
@@ -44,21 +47,29 @@ pub use controller::Controller;
 pub use gstreamer_backend::PlayerBackend;
 pub use playback_state::PlaybackState;
 
+use crate::model::SongModel;
+
 pub struct Player {
     pub widget: gtk::Box,
     controller: Rc<Vec<Box<Controller>>>,
 
     backend: Arc<Mutex<PlayerBackend>>,
-    song_listbox: Rc<RefCell<SongListBox>>,
+    song_model: Rc<RefCell<SongModel>>,
+    song_listbox: SongListBox,
 }
 
 impl Player {
     pub fn new(sender: Sender<Action>) -> Self {
         let builder = gtk::Builder::new_from_resource("/de/haeckerfelix/Shortwave/gtk/player.ui");
         let widget: gtk::Box = builder.get_object("player").unwrap();
-        let backend = Arc::new(Mutex::new(PlayerBackend::new()));
-        let song_listbox = Rc::new(RefCell::new(SongListBox::new()));
-        widget.add(&song_listbox.borrow().widget);
+
+        let song_model = Rc::new(RefCell::new(SongModel::new(5)));
+        let song_listbox = SongListBox::new(sender.clone());
+        song_listbox.bind_model(&song_model.borrow());
+        widget.add(&song_listbox.widget);
+
+        let (gst_sender, gst_receiver) = glib::MainContext::channel(glib::PRIORITY_DEFAULT);
+        let backend = Arc::new(Mutex::new(PlayerBackend::new(gst_sender)));
 
         let mut controller: Vec<Box<Controller>> = Vec::new();
 
@@ -78,18 +89,19 @@ impl Player {
             widget,
             controller,
             backend,
+            song_model,
             song_listbox,
         };
 
-        player.setup_signals();
+        player.setup_signals(gst_receiver);
         player
     }
 
     pub fn set_station(&self, station: Station) {
-        // discard old song, because it's not completely recorded
-        self.song_listbox.borrow_mut().discard_current_song();
-
-        self.song_listbox.borrow_mut().current_station = Some(station.clone());
+        // TODO: discard old song (because it's not completely recorded),
+        // stop recording and stop playback
+        let song = self.backend.lock().unwrap().stop_recording().unwrap();
+        self.song_model.borrow_mut().remove_song(&song);
         self.set_playback(PlaybackState::Stopped);
 
         for con in &*self.controller {
@@ -112,97 +124,101 @@ impl Player {
             }
             PlaybackState::Stopped => {
                 let _ = self.backend.lock().unwrap().set_state(gstreamer::State::Null);
-
-                // We need to set it manually, because we don't receive a gst message when the playback stops
-                for con in &*self.controller {
-                    con.set_playback_state(&PlaybackState::Stopped);
-                }
             }
             _ => (),
-        };
+        }
     }
 
     pub fn shutdown(&self) {
         self.set_playback(PlaybackState::Stopped);
-        self.song_listbox.borrow_mut().delete_everything();
+
+        // Clear song model and remove all saved songs
+        self.song_model.borrow_mut().clear();
+        fs::remove_dir_all(Self::get_song_path("".to_string())).expect("Could not remove recording folder");
     }
 
-    fn parse_bus_message(message: &gstreamer::Message, controller: Rc<Vec<Box<Controller>>>, backend: Arc<Mutex<PlayerBackend>>, song_listbox: Rc<RefCell<SongListBox>>) {
-        match message.view() {
-            gstreamer::MessageView::Tag(tag) => {
-                tag.get_tags().get::<gstreamer::tags::Title>().map(|t| {
-                    let new_song = Song::new(t.get().unwrap());
-
-                    // Check if song have changed
-                    if song_listbox.borrow_mut().set_new_song(new_song.clone()) {
-                        // set new song
-                        debug!("New song: {:?}", new_song.clone().title);
-                        for con in &*controller {
-                            con.set_song_title(new_song.clone().title.as_ref());
-                        }
-
-                        debug!("Block the dataflow ...");
-                        backend.lock().unwrap().block_dataflow();
-                    }
-                });
-            }
-            gstreamer::MessageView::StateChanged(sc) => {
-                let playback_state = match sc.get_current() {
-                    gstreamer::State::Playing => PlaybackState::Playing,
-                    gstreamer::State::Paused => PlaybackState::Loading,
-                    gstreamer::State::Ready => PlaybackState::Loading,
-                    _ => PlaybackState::Stopped,
-                };
-
-                for con in &*controller {
-                    con.set_playback_state(&playback_state);
-                }
-            }
-            gstreamer::MessageView::Element(element) => {
-                let structure = element.get_structure().unwrap();
-                if structure.get_name() == "GstBinForwarded" {
-                    let message: gstreamer::message::Message = structure.get("message").unwrap();
-                    if let gstreamer::MessageView::Eos(_) = &message.view() {
-                        debug!("muxsinkbin got EOS...");
-
-                        if song_listbox.borrow().current_song.is_some() {
-                            // Old song got saved correctly (cause we got the EOS message),
-                            // so we can start with the new song now
-                            let song = song_listbox.borrow_mut().current_song.clone().unwrap();
-                            debug!("Cache song \"{}\" under \"{}\"", song.title, song.path);
-                            backend.lock().unwrap().new_filesink_location(&song.path);
-                        } else {
-                            // Or just redirect the stream to /dev/null
-                            backend.lock().unwrap().new_filesink_location("/dev/null");
-                        }
-                    }
-                }
-            }
-            gstreamer::MessageView::Error(err) => {
-                let msg = err.get_error().to_string();
-                warn!("Gstreamer Error: {:?}", msg);
-                for con in &*controller {
-                    con.set_playback_state(&PlaybackState::Failure(msg.clone()));
-                }
-            }
-            _ => (),
-        };
-    }
-
-    fn setup_signals(&self) {
-        // new backend (pipeline) bus messages
-        let bus = self.backend.lock().unwrap().get_pipeline_bus();
+    fn setup_signals(&self, receiver: Receiver<GstreamerMessage>) {
+        // Wait for new messages from the Gstreamer backend
         let controller = self.controller.clone();
+        let song_model = self.song_model.clone();
         let backend = self.backend.clone();
-        let song_listbox = self.song_listbox.clone();
-        gtk::timeout_add(250, move || {
-            while bus.have_pending() {
-                bus.pop().map(|message| {
-                    //debug!("new message {:?}", message);
-                    Self::parse_bus_message(&message, controller.clone(), backend.clone(), song_listbox.clone());
-                });
+        receiver.attach(None, move |message| Self::process_gst_message(message, controller.clone(), song_model.clone(), backend.clone()));
+
+        // Show song listbox if a song gets added
+        let listbox = self.song_listbox.widget.clone();
+        self.song_model.borrow().model.connect_items_changed(move |_, _, _, added| {
+            if added == 1 {
+                listbox.set_visible(true);
             }
-            Continue(true)
         });
+    }
+
+    fn process_gst_message(message: GstreamerMessage, controller: Rc<Vec<Box<Controller>>>, song_model: Rc<RefCell<SongModel>>, backend: Arc<Mutex<PlayerBackend>>) -> glib::Continue {
+        match message {
+            GstreamerMessage::SongTitleChanged(title) => {
+                debug!("Song title has changed: \"{}\"", title);
+
+                for con in &*controller {
+                    con.set_song_title(&title);
+                }
+
+                // Song have changed -> stop recording
+                if backend.lock().unwrap().is_recording() {
+                    let song = backend.lock().unwrap().stop_recording().unwrap();
+                    song_model.borrow_mut().add_song(song);
+                } else {
+                    // Get current/new song title
+                    let title = backend.lock().unwrap().get_current_song_title();
+
+                    // Nothing needs to be stopped, so we can start directly recording.
+                    backend.lock().unwrap().start_recording(Self::get_song_path(title));
+                }
+            }
+            GstreamerMessage::RecordingStopped => {
+                // Recording successfully stopped.
+                debug!("Recording stopped.");
+
+                // Get current/new song title
+                let title = backend.lock().unwrap().get_current_song_title();
+
+                // Start recording new song
+                if title != "" {
+                    backend.lock().unwrap().start_recording(Self::get_song_path(title));
+                }
+            }
+            GstreamerMessage::PlaybackStateChanged(state) => {
+                for con in &*controller {
+                    con.set_playback_state(&state);
+                }
+            }
+        }
+        glib::Continue(true)
+    }
+
+    fn get_song_path(mut title: String) -> PathBuf {
+        // remove special chars from title
+        // if anybody knows a better way to do this, feel free to open a MR on GitLab :)
+        title = title.replace("/", "");
+        title = title.replace("\\", "");
+        title = title.replace(":", "");
+        title = title.replace("<", "");
+        title = title.replace(">", "");
+        title = title.replace("\"", "");
+        title = title.replace("|", "");
+        title = title.replace("?", "");
+        title = title.replace("*", "");
+
+        let mut path = glib::get_user_cache_dir().unwrap();
+        path.push(config::NAME);
+        path.push("recording");
+
+        // Make sure that the path exists
+        fs::create_dir_all(path.clone()).expect("Could not create path for recording");
+
+        if title != "" {
+            path.push(title);
+            path.set_extension("ogg");
+        }
+        path
     }
 }
