@@ -15,9 +15,9 @@ use crate::song::Song;
 //                                           |     | -> | queue [1] -> | muxsinkbin |                   //
 //    --------------      --------------     |     |     --------       ------------                    //
 //   | uridecodebin | -> | audioconvert | -> | tee |                                                    //
-//    --------------      --------------     |     |     --------       --------      ---------------   //
-//                                           |     | -> | queue [2] -> | volume | -> | autoaudiosink |  //
-//                                            -----      --------       --------      ---------------   //
+//    --------------      --------------     |     |     -------      --------      ---------------     //
+//                                           |     | -> | queue | -> | volume | -> | autoaudiosink |    //
+//                                            -----      -------      --------      ---------------     //
 //                                                                                                      //
 //                                                                                                      //
 //                                                                                                      //
@@ -167,6 +167,13 @@ impl PlayerBackend {
     }
 
     pub fn start_recording(&mut self, path: PathBuf) {
+        // We need to set an offset, otherwise the length of the recorded song would be wrong.
+        // Get current clock time and calculate offset
+        let clock = self.pipeline.get_clock().unwrap();
+        debug!("Clock time: {}", clock.get_time());
+        let offset = -(clock.get_time().nseconds().unwrap() as i64);
+        self.file_srcpad.set_offset(offset);
+
         debug!("Start recording to \"{:?}\"...", path);
 
         debug!("Destroy old muxsinkbin...");

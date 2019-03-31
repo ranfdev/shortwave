@@ -98,10 +98,11 @@ impl Player {
     }
 
     pub fn set_station(&self, station: Station) {
-        // TODO: discard old song (because it's not completely recorded),
+        // discard old song (because it's not completely recorded),
         // stop recording and stop playback
-        let song = self.backend.lock().unwrap().stop_recording().unwrap();
-        self.song_model.borrow_mut().remove_song(&song);
+        self.backend.lock().unwrap().stop_recording().map(|song| {
+            self.song_model.borrow_mut().remove_song(&song);
+        });
         self.set_playback(PlaybackState::Stopped);
 
         for con in &*self.controller {
@@ -207,6 +208,7 @@ impl Player {
         title = title.replace("|", "");
         title = title.replace("?", "");
         title = title.replace("*", "");
+        title = title.replace(".", "");
 
         let mut path = glib::get_user_cache_dir().unwrap();
         path.push(config::NAME);
