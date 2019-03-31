@@ -98,10 +98,10 @@ impl Player {
     }
 
     pub fn set_station(&self, station: Station) {
-        // discard old song (because it's not completely recorded),
+        // Discard old song (because it's not completely recorded),
         // stop recording and stop playback
         self.backend.lock().unwrap().stop_recording().map(|song| {
-            self.song_model.borrow_mut().remove_song(&song);
+            self.song_model.borrow_mut().remove_song(&song).unwrap();
         });
         self.set_playback(PlaybackState::Stopped);
 
@@ -134,7 +134,7 @@ impl Player {
         self.set_playback(PlaybackState::Stopped);
 
         // Clear song model and remove all saved songs
-        self.song_model.borrow_mut().clear();
+        self.song_model.borrow_mut().clear().unwrap();
         fs::remove_dir_all(Self::get_song_path("".to_string())).expect("Could not remove recording folder");
     }
 

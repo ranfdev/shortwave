@@ -18,8 +18,7 @@ impl SongRow {
     pub fn new(_sender: Sender<Action>, song: Song) -> Self {
         let widget = ActionRow::new();
         widget.set_title(&song.title);
-        // TODO: display song duration
-        //widget.set_subtitle(&Self::format_duration(song.duration.elapsed().as_secs()));
+        widget.set_subtitle(&Self::format_duration(song.duration.as_secs()));
         widget.set_icon_name("");
 
         let save_button = gtk::Button::new();

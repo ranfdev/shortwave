@@ -4,6 +4,7 @@ use gstreamer::{Bin, Element, ElementFactory, Pad, PadProbeId, Pipeline, State};
 
 use std::path::PathBuf;
 use std::sync::{Arc, Mutex};
+use std::time::SystemTime;
 
 use crate::player::playback_state::PlaybackState;
 use crate::song::Song;
@@ -59,6 +60,7 @@ pub struct PlayerBackend {
     file_blockprobe_id: Option<PadProbeId>,
 
     current_title: Arc<Mutex<String>>,
+    current_title_timestamp: Option<SystemTime>,
     sender: Sender<GstreamerMessage>,
 }
 
@@ -141,6 +143,7 @@ impl PlayerBackend {
             file_srcpad,
             file_blockprobe_id: None,
             current_title,
+            current_title_timestamp: None,
             sender,
         };
 
@@ -167,14 +170,14 @@ impl PlayerBackend {
     }
 
     pub fn start_recording(&mut self, path: PathBuf) {
+        debug!("Start recording to \"{:?}\"...", path);
+
         // We need to set an offset, otherwise the length of the recorded song would be wrong.
         // Get current clock time and calculate offset
         let clock = self.pipeline.get_clock().unwrap();
         debug!("Clock time: {}", clock.get_time());
         let offset = -(clock.get_time().nseconds().unwrap() as i64);
         self.file_srcpad.set_offset(offset);
-
-        debug!("Start recording to \"{:?}\"...", path);
 
         debug!("Destroy old muxsinkbin...");
         if self.muxsinkbin.is_some() {
@@ -195,6 +198,9 @@ impl PlayerBackend {
             None => (),
         }
 
+        // Set title timestamp so we can check the duration later
+        self.current_title_timestamp = Some(SystemTime::now());
+
         debug!("Everything ok.");
     }
 
@@ -207,6 +213,11 @@ impl PlayerBackend {
             let path_value = muxsinkbin.clone().unwrap().get_by_name("filesink").unwrap().get_property("location").unwrap();
             let path_string: String = path_value.get().unwrap();
             let path: PathBuf = PathBuf::from(path_string);
+
+            // Get song duration
+            let now = SystemTime::now();
+            let duration = now.duration_since(self.current_title_timestamp.unwrap()).unwrap();
+            self.current_title_timestamp = None;
 
             // Remove file extension (.ogg) from filename
             let mut title_path = path.clone();
@@ -229,7 +240,7 @@ impl PlayerBackend {
             self.file_blockprobe_id = Some(file_id);
 
             // Create song and return it
-            let song = Song::new(title, path.clone());
+            let song = Song::new(title, path.clone(), duration);
             return Some(song);
         } else {
             debug!("No muxsinkbin available - nothing to stop");
