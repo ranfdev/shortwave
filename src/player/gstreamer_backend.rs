@@ -1,6 +1,6 @@
 use glib::Sender;
 use gstreamer::prelude::*;
-use gstreamer::{Bin, Element, ElementFactory, Pad, PadProbeId, Pipeline, State};
+use gstreamer::{Bin, Element, ElementFactory, GhostPad, Pad, PadProbeId, Pipeline, State};
 
 use std::path::PathBuf;
 use std::sync::{Arc, Mutex};
@@ -12,9 +12,9 @@ use crate::song::Song;
 //////////////////////////////////////////////////////////////////////////////////////////////////////////
 //                                                                                                      //
 //  # Gstreamer Pipeline                                                                                //
-//                                            -----      --------       ------------                    //
-//                                           |     | -> | queue [1] -> | muxsinkbin |                   //
-//    --------------      --------------     |     |     --------       ------------                    //
+//                                            -----      --------       -------------                   //
+//                                           |     | -> | queue [1] -> | recorderbin |                  //
+//    --------------      --------------     |     |     --------       -------------                   //
 //   | uridecodebin | -> | audioconvert | -> | tee |                                                    //
 //    --------------      --------------     |     |     -------      --------      ---------------     //
 //                                           |     | -> | queue | -> | volume | -> | autoaudiosink |    //
@@ -22,16 +22,8 @@ use crate::song::Song;
 //                                                                                                      //
 //                                                                                                      //
 //                                                                                                      //
-//  We use the the file_srcpad[1] to block the dataflow, so we can change the muxsinkbin.               //
+//  We use the the file_srcpad[1] to block the dataflow, so we can change the recorderbin.              //
 //  The dataflow gets blocked when the song changes.                                                    //
-//                                                                                                      //
-//                                                                                                      //
-//  # muxsinkbin:  (gstreamer Bin)                                                                      //
-//    --------------------------------------------------------------                                    //
-//   |                  -----------       --------      ----------  |                                   //
-//   | ( ghostpad ) -> | vorbisenc | ->  | oggmux | -> | filesink | |                                   //
-//   |                  -----------       --------      ----------  |                                   //
-//    --------------------------------------------------------------                                    //
 //                                                                                                      //
 //////////////////////////////////////////////////////////////////////////////////////////////////////////
 
@@ -55,12 +47,11 @@ pub struct PlayerBackend {
     autoaudiosink: Element,
 
     file_queue: Element,
-    muxsinkbin: Option<Bin>,
+    recorderbin: Arc<Mutex<Option<RecorderBin>>>,
     file_srcpad: Pad,
     file_blockprobe_id: Option<PadProbeId>,
 
     current_title: Arc<Mutex<String>>,
-    current_title_timestamp: Option<SystemTime>,
     sender: Sender<GstreamerMessage>,
 }
 
@@ -130,6 +121,8 @@ impl PlayerBackend {
             Continue(true)
         });
 
+        let recorderbin = Arc::new(Mutex::new(None));
+
         let pipeline = Self {
             pipeline,
             uridecodebin,
@@ -139,11 +132,10 @@ impl PlayerBackend {
             volume,
             autoaudiosink,
             file_queue,
-            muxsinkbin: None,
+            recorderbin,
             file_srcpad,
             file_blockprobe_id: None,
             current_title,
-            current_title_timestamp: None,
             sender,
         };
 
@@ -179,17 +171,16 @@ impl PlayerBackend {
         let offset = -(clock.get_time().nseconds().unwrap() as i64);
         self.file_srcpad.set_offset(offset);
 
-        debug!("Destroy old muxsinkbin...");
-        if self.muxsinkbin.is_some() {
-            let muxsinkbin = self.muxsinkbin.take().unwrap();
-            let _ = muxsinkbin.set_state(State::Null);
-            self.pipeline.remove(&muxsinkbin).unwrap();
+        debug!("Destroy old recorderbin...");
+        if self.recorderbin.lock().unwrap().is_some() {
+            self.recorderbin.lock().unwrap().take().unwrap().destroy();
         } else {
-            debug!("No muxsinkbin available - nothing to destroy");
+            debug!("No recorderbin available - nothing to destroy");
         }
 
-        debug!("Create new muxsinkbin");
-        self.create_muxsinkbin(path);
+        debug!("Create new recorderbin");
+        let recorderbin = RecorderBin::new(self.get_current_song_title(), path, self.pipeline.clone(), &self.file_srcpad);
+        *self.recorderbin.lock().unwrap() = Some(recorderbin);
 
         // Remove block probe id, if available
         debug!("Remove block probe...");
@@ -198,38 +189,20 @@ impl PlayerBackend {
             None => (),
         }
 
-        // Set title timestamp so we can check the duration later
-        self.current_title_timestamp = Some(SystemTime::now());
-
         debug!("Everything ok.");
     }
 
     pub fn stop_recording(&mut self) -> Option<Song> {
-        debug!("Stop recording... ({:?})", self.muxsinkbin);
+        debug!("Stop recording...");
 
-        let muxsinkbin = self.muxsinkbin.clone();
-        if muxsinkbin.is_some() {
-            // Get location property from muxsinkbin
-            let path_value = muxsinkbin.clone().unwrap().get_by_name("filesink").unwrap().get_property("location").unwrap();
-            let path_string: String = path_value.get().unwrap();
-            let path: PathBuf = PathBuf::from(path_string);
-
-            // Get song duration
-            let now = SystemTime::now();
-            let duration = now.duration_since(self.current_title_timestamp.unwrap()).unwrap();
-            self.current_title_timestamp = None;
-
-            // Remove file extension (.ogg) from filename
-            let mut title_path = path.clone();
-            title_path.set_extension("");
-            let title = title_path.file_name().unwrap().to_str().unwrap();
-
+        if self.recorderbin.lock().unwrap().is_some() {
+            let rbin = self.recorderbin.clone();
             let file_id = self
                 .file_srcpad
                 .add_probe(gstreamer::PadProbeType::BLOCK_DOWNSTREAM, move |_, _| {
                     // Dataflow is blocked
-                    debug!("Push EOS into muxsinkbin sinkpad...");
-                    let sinkpad = muxsinkbin.clone().unwrap().get_static_pad("sink").unwrap();
+                    debug!("Push EOS into recorderbin sinkpad...");
+                    let sinkpad = rbin.lock().unwrap().clone().unwrap().gstbin.get_static_pad("sink").unwrap();
                     sinkpad.send_event(gstreamer::Event::new_eos().build());
 
                     gstreamer::PadProbeReturn::Ok
@@ -240,56 +213,20 @@ impl PlayerBackend {
             self.file_blockprobe_id = Some(file_id);
 
             // Create song and return it
-            let song = Song::new(title, path.clone(), duration);
+            let song = self.recorderbin.lock().unwrap().clone().unwrap().stop();
             return Some(song);
         } else {
-            debug!("No muxsinkbin available - nothing to stop");
+            debug!("No recorderbin available - nothing to stop");
+            return None;
         }
-
-        None
     }
 
     pub fn is_recording(&self) -> bool {
-        self.muxsinkbin.is_some()
+        self.recorderbin.lock().unwrap().is_some()
     }
 
     pub fn get_current_song_title(&self) -> String {
         self.current_title.lock().unwrap().clone()
-    }
-
-    fn create_muxsinkbin(&mut self, path: PathBuf) {
-        // Create vorbisenc
-        let vorbisenc = ElementFactory::make("vorbisenc", "vorbisenc").unwrap();
-
-        // Create oggmux
-        let oggmux = ElementFactory::make("oggmux", "oggmux").unwrap();
-
-        // Create filesink
-        let filesink = ElementFactory::make("filesink", "filesink").unwrap();
-        filesink.set_property("location", &path.to_str().unwrap()).unwrap();
-        // Create bin
-        let bin = Bin::new("bin");
-        bin.set_property("message-forward", &true).unwrap();
-
-        // Add elements to bin and link them
-        bin.add(&vorbisenc).unwrap();
-        bin.add(&oggmux).unwrap();
-        bin.add(&filesink).unwrap();
-        Element::link_many(&[&vorbisenc, &oggmux, &filesink]).unwrap();
-
-        // Add bin to pipeline
-        self.pipeline.add(&bin).unwrap();
-
-        // Link queue src pad with vorbisenc sinkpad using a ghostpad
-        let vorbisenc_sinkpad = vorbisenc.get_static_pad("sink").unwrap();
-
-        let ghostpad = gstreamer::GhostPad::new("sink", &vorbisenc_sinkpad).unwrap();
-        bin.add_pad(&ghostpad).unwrap();
-        bin.sync_state_with_parent().unwrap();
-
-        self.file_srcpad.link(&ghostpad).expect("Queue src pad cannot linked to vorbisenc sinkpad");
-
-        self.muxsinkbin = Some(bin);
     }
 
     fn parse_bus_message(message: &gstreamer::Message, sender: Sender<GstreamerMessage>, current_title: Arc<Mutex<String>>) {
@@ -320,8 +257,8 @@ impl PlayerBackend {
                 if structure.get_name() == "GstBinForwarded" {
                     let message: gstreamer::message::Message = structure.get("message").unwrap();
                     if let gstreamer::MessageView::Eos(_) = &message.view() {
-                        // muxsinkbin got EOS which means the current song got successfully saved.
-                        debug!("muxsinkbin got EOS...");
+                        // recorderbin got EOS which means the current song got successfully saved.
+                        debug!("Recorderbin received EOS...");
                         sender.send(GstreamerMessage::RecordingStopped).unwrap();
                     }
                 }
@@ -333,5 +270,90 @@ impl PlayerBackend {
             }
             _ => (),
         };
+    }
+}
+
+//////////////////////////////////////////////////////////////////////////////////////////////////////////
+//                                                                                                      //
+//  # RecorderBin                                                                                       //
+//                                                                                                      //
+//    --------------------------------------------------------------                                    //
+//   |                  -----------       --------      ----------  |                                   //
+//   | ( ghostpad ) -> | vorbisenc | ->  | oggmux | -> | filesink | |                                   //
+//   |                  -----------       --------      ----------  |                                   //
+//    --------------------------------------------------------------                                    //
+//                                                                                                      //
+/////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+#[allow(dead_code)]
+#[derive(Clone)]
+struct RecorderBin {
+    pub gstbin: Bin,
+    pipeline: Pipeline,
+
+    ghostpad: GhostPad,
+    vorbisenc: Element,
+    oggmux: Element,
+    filesink: Element,
+
+    song_title: String,
+    song_path: PathBuf,
+    song_timestamp: SystemTime,
+}
+
+impl RecorderBin {
+    pub fn new(song_title: String, song_path: PathBuf, pipeline: Pipeline, srcpad: &Pad) -> Self {
+        // Create elements
+        let vorbisenc = ElementFactory::make("vorbisenc", "vorbisenc").unwrap();
+        let oggmux = ElementFactory::make("oggmux", "oggmux").unwrap();
+        let filesink = ElementFactory::make("filesink", "filesink").unwrap();
+        filesink.set_property("location", &song_path.to_str().unwrap()).unwrap();
+
+        // Create bin itself
+        let bin = Bin::new("bin");
+        bin.set_property("message-forward", &true).unwrap();
+
+        // Add elements to bin and link them
+        bin.add(&vorbisenc).unwrap();
+        bin.add(&oggmux).unwrap();
+        bin.add(&filesink).unwrap();
+        Element::link_many(&[&vorbisenc, &oggmux, &filesink]).unwrap();
+
+        // Add bin to pipeline
+        pipeline.add(&bin).expect("Could not add recorderbin to pipeline");
+
+        // Link file_srcpad with vorbisenc sinkpad using a ghostpad
+        let vorbisenc_sinkpad = vorbisenc.get_static_pad("sink").unwrap();
+        let ghostpad = gstreamer::GhostPad::new("sink", &vorbisenc_sinkpad).unwrap();
+        bin.add_pad(&ghostpad).unwrap();
+        bin.sync_state_with_parent().unwrap();
+        srcpad.link(&ghostpad).expect("Queue src pad cannot linked to vorbisenc sinkpad");
+
+        // Set song timestamp so we can check the duration later
+        let song_timestamp = SystemTime::now();
+
+        Self {
+            gstbin: bin,
+            pipeline,
+            ghostpad,
+            vorbisenc,
+            oggmux,
+            filesink,
+            song_title,
+            song_path,
+            song_timestamp,
+        }
+    }
+
+    pub fn stop(&self) -> Song {
+        let now = SystemTime::now();
+        let duration = now.duration_since(self.song_timestamp).unwrap();
+
+        Song::new(&self.song_title, self.song_path.clone(), duration)
+    }
+
+    pub fn destroy(&self) {
+        self.pipeline.remove(&self.gstbin).unwrap();
+        self.gstbin.set_state(State::Null).unwrap();
     }
 }

@@ -14,6 +14,7 @@ use crate::app::Action;
 use crate::config;
 use crate::player::controller::{GtkController, MprisController};
 use crate::player::gstreamer_backend::GstreamerMessage;
+use crate::song::Song;
 use crate::widgets::song_listbox::SongListBox;
 
 ////////////////////////////////////////////////////////////////////////////////////////////
@@ -196,19 +197,8 @@ impl Player {
         glib::Continue(true)
     }
 
-    fn get_song_path(mut title: String) -> PathBuf {
-        // remove special chars from title
-        // if anybody knows a better way to do this, feel free to open a MR on GitLab :)
-        title = title.replace("/", "");
-        title = title.replace("\\", "");
-        title = title.replace(":", "");
-        title = title.replace("<", "");
-        title = title.replace(">", "");
-        title = title.replace("\"", "");
-        title = title.replace("|", "");
-        title = title.replace("?", "");
-        title = title.replace("*", "");
-        title = title.replace(".", "");
+    fn get_song_path(title: String) -> PathBuf {
+        let title = Song::simplify_title(title);
 
         let mut path = glib::get_user_cache_dir().unwrap();
         path.push(config::NAME);

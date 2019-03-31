@@ -41,10 +41,10 @@ impl SongRow {
         let save_button = self.save_button.clone();
         self.save_button.connect_clicked(move |_| {
             let mut path = PathBuf::from(glib::get_user_special_dir(glib::UserDirectory::Music).unwrap());
-            path.push(&song.title);
+            path.push(&Song::simplify_title(song.title.clone()));
             match song.save_as(path) {
                 Ok(()) => widget.set_subtitle("Saved"),
-                Err(_) => widget.set_subtitle("Could not save"),
+                Err(err) => widget.set_subtitle(&err.to_string()),
             };
             save_button.set_visible(false);
         });
