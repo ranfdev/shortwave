@@ -63,7 +63,8 @@ impl StationDialog {
 
     fn setup(&self) {
         self.title_label.set_text(&self.station.name);
-        self.subtitle_label.set_text(&format!("{} {} · {} Votes", self.station.country, self.station.state, self.station.votes));
+        let subtitle_text = &format!("{} {} · {} Votes", self.station.country, self.station.state, self.station.votes);
+        self.subtitle_label.set_text(subtitle_text);
 
         if self.station.codec != "" {
             self.codec_label.set_text(&self.station.codec);
