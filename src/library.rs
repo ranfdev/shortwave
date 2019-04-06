@@ -54,13 +54,17 @@ impl Library {
         library.setup_signals();
 
         // Read stations
-        match Self::read(LIBRARY_PATH.to_path_buf()) {
-            Ok(stations) => library.add_stations(stations),
-            Err(error) => {
-                let message = format!("Could not read library data: {}", error.to_string());
-                library.sender.send(Action::ViewShowNotification(message)).unwrap();
-            }
-        };
+        if LIBRARY_PATH.to_path_buf().exists() {
+            match Self::read(LIBRARY_PATH.to_path_buf()) {
+                Ok(stations) => library.add_stations(stations),
+                Err(error) => {
+                    let message = format!("Could not read library data: {}", error.to_string());
+                    library.sender.send(Action::ViewShowNotification(message)).unwrap();
+                }
+            };
+        } else {
+            info!("No library data available to read.")
+        }
 
         library
     }
