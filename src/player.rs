@@ -99,11 +99,6 @@ impl Player {
     }
 
     pub fn set_station(&self, station: Station) {
-        // Discard old song (because it's not completely recorded),
-        // stop recording and stop playback
-        self.backend.lock().unwrap().stop_recording().map(|song| {
-            self.song_model.borrow_mut().remove_song(&song).unwrap();
-        });
         self.set_playback(PlaybackState::Stopped);
 
         for con in &*self.controller {
@@ -125,6 +120,9 @@ impl Player {
                 let _ = self.backend.lock().unwrap().set_state(gstreamer::State::Playing);
             }
             PlaybackState::Stopped => {
+                // Discard current recording because the song has not yet been completely recorded.
+                self.backend.lock().unwrap().stop_recording(false);
+
                 let _ = self.backend.lock().unwrap().set_state(gstreamer::State::Null);
             }
             _ => (),
@@ -166,7 +164,7 @@ impl Player {
 
                 // Song have changed -> stop recording
                 if backend.lock().unwrap().is_recording() {
-                    let song = backend.lock().unwrap().stop_recording().unwrap();
+                    let song = backend.lock().unwrap().stop_recording(true).unwrap();
                     song_model.borrow_mut().add_song(song);
                 } else {
                     // Get current/new song title

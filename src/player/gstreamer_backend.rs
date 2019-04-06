@@ -2,6 +2,7 @@ use glib::Sender;
 use gstreamer::prelude::*;
 use gstreamer::{Bin, Element, ElementFactory, GhostPad, Pad, PadProbeId, Pipeline, State};
 
+use std::fs;
 use std::path::PathBuf;
 use std::sync::{Arc, Mutex};
 use std::time::SystemTime;
@@ -142,7 +143,7 @@ impl PlayerBackend {
         pipeline
     }
 
-    pub fn set_state(&self, state: gstreamer::State) {
+    pub fn set_state(&mut self, state: gstreamer::State) {
         if state == gstreamer::State::Null {
             self.sender.send(GstreamerMessage::PlaybackStateChanged(PlaybackState::Stopped)).unwrap();
         }
@@ -166,7 +167,7 @@ impl PlayerBackend {
 
         // We need to set an offset, otherwise the length of the recorded song would be wrong.
         // Get current clock time and calculate offset
-        let clock = self.pipeline.get_clock().unwrap();
+        let clock = self.pipeline.get_clock().expect("Could not get gstreamer pipeline clock");
         debug!("Clock time: {}", clock.get_time());
         let offset = -(clock.get_time().nseconds().unwrap() as i64);
         self.file_srcpad.set_offset(offset);
@@ -192,29 +193,37 @@ impl PlayerBackend {
         debug!("Everything ok.");
     }
 
-    pub fn stop_recording(&mut self) -> Option<Song> {
+    pub fn stop_recording(&mut self, save_song: bool) -> Option<Song> {
         debug!("Stop recording...");
 
         if self.recorderbin.lock().unwrap().is_some() {
             let rbin = self.recorderbin.clone();
-            let file_id = self
-                .file_srcpad
-                .add_probe(gstreamer::PadProbeType::BLOCK_DOWNSTREAM, move |_, _| {
-                    // Dataflow is blocked
-                    debug!("Push EOS into recorderbin sinkpad...");
-                    let sinkpad = rbin.lock().unwrap().clone().unwrap().gstbin.get_static_pad("sink").unwrap();
-                    sinkpad.send_event(gstreamer::Event::new_eos().build());
+            if save_song {
+                let file_id = self
+                    .file_srcpad
+                    .add_probe(gstreamer::PadProbeType::BLOCK_DOWNSTREAM, move |_, _| {
+                        // Dataflow is blocked
+                        debug!("Push EOS into recorderbin sinkpad...");
+                        let sinkpad = rbin.lock().unwrap().clone().unwrap().gstbin.get_static_pad("sink").unwrap();
+                        sinkpad.send_event(gstreamer::Event::new_eos().build());
 
-                    gstreamer::PadProbeReturn::Ok
-                })
-                .unwrap();
+                        gstreamer::PadProbeReturn::Ok
+                    })
+                    .unwrap();
 
-            // We need the padprobe id later to remove the block probe
-            self.file_blockprobe_id = Some(file_id);
+                // We need the padprobe id later to remove the block probe
+                self.file_blockprobe_id = Some(file_id);
 
-            // Create song and return it
-            let song = self.recorderbin.lock().unwrap().clone().unwrap().stop();
-            return Some(song);
+                // Create song and return it
+                let song = self.recorderbin.lock().unwrap().clone().unwrap().stop();
+                return Some(song);
+            } else {
+                debug!("Discard recorded data");
+                let recorderbin = self.recorderbin.lock().unwrap().take().unwrap();
+                fs::remove_file(&recorderbin.song_path).expect("Could not delete recorded data");
+                recorderbin.destroy();
+                return None;
+            }
         } else {
             debug!("No recorderbin available - nothing to stop");
             return None;
@@ -297,7 +306,7 @@ struct RecorderBin {
     filesink: Element,
 
     song_title: String,
-    song_path: PathBuf,
+    pub song_path: PathBuf,
     song_timestamp: SystemTime,
 }
 
