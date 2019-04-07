@@ -36,7 +36,7 @@ pub enum GstreamerMessage {
 }
 
 #[allow(dead_code)]
-pub struct PlayerBackend {
+pub struct GstreamerBackend {
     pipeline: Pipeline,
 
     uridecodebin: Element,
@@ -56,7 +56,7 @@ pub struct PlayerBackend {
     sender: Sender<GstreamerMessage>,
 }
 
-impl PlayerBackend {
+impl GstreamerBackend {
     pub fn new(sender: Sender<GstreamerMessage>) -> Self {
         // create gstreamer pipeline
         let pipeline = Pipeline::new("recorder_pipeline");

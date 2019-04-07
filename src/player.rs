@@ -17,35 +17,33 @@ use crate::player::gstreamer_backend::GstreamerMessage;
 use crate::song::Song;
 use crate::widgets::song_listbox::SongListBox;
 
-////////////////////////////////////////////////////////////////////////////////////////////
-//                                                                                        //
-//  A small overview of the player/gstreamer program structure  :)                        //
-//                                                                                        //
-//   ----------------------    -----------------    ---------------                       //
-//  | ChromecastController |  | MprisController |  | GtkController |                      //
-//   ----------------------    -----------------    ---------------                       //
-//            |                        |                   |                              //
-//            ----------------------------------------------                              //
-//                                     |                                                  //
-//                              ------------                          --------------      //
-//                             | Controller |                        | AudioBackend |     //
-//                              ------------                          --------------      //
-//                                     |      -------------------           |             //
-//                                     |     | Gstreamer Backend |----------|             //
-//	                                   |      -------------------           |             //
-//                                     |        |                     ---------------     //
-//                                    -----------                    | ExportBackend |    //
-//                                   |  Player   |                    ---------------     //
-//                                    -----------                                         //
-//                                                                                        //
-////////////////////////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////////
+//                                                                                //
+//  A small overview of the player/gstreamer program structure  :)                //
+//                                                                                //
+//   ----------------------    -----------------    ---------------               //
+//  | ChromecastController |  | MprisController |  | GtkController |              //
+//   ----------------------    -----------------    ---------------               //
+//            |                        |                   |                      //
+//            \--------------------------------------------/                      //
+//                                     |                                          //
+//                           ------------     -------------------                 //
+//                          | Controller |   | Gstreamer Backend |                //
+//                           ------------     -------------------                 //
+//                                     |        |                                 //
+//                                     |        |                                 //
+//                                    -----------                                 //
+//                                   |  Player   |                                //
+//                                    -----------                                 //
+//                                                                                //
+////////////////////////////////////////////////////////////////////////////////////
 
 mod controller;
 pub mod gstreamer_backend;
 mod playback_state;
 
 pub use controller::Controller;
-pub use gstreamer_backend::PlayerBackend;
+pub use gstreamer_backend::GstreamerBackend;
 pub use playback_state::PlaybackState;
 
 use crate::model::SongModel;
@@ -54,7 +52,7 @@ pub struct Player {
     pub widget: gtk::Box,
     controller: Rc<Vec<Box<Controller>>>,
 
-    backend: Arc<Mutex<PlayerBackend>>,
+    backend: Arc<Mutex<GstreamerBackend>>,
     song_model: Rc<RefCell<SongModel>>,
     song_listbox: SongListBox,
 }
@@ -70,7 +68,7 @@ impl Player {
         widget.add(&song_listbox.widget);
 
         let (gst_sender, gst_receiver) = glib::MainContext::channel(glib::PRIORITY_DEFAULT);
-        let backend = Arc::new(Mutex::new(PlayerBackend::new(gst_sender)));
+        let backend = Arc::new(Mutex::new(GstreamerBackend::new(gst_sender)));
 
         let mut controller: Vec<Box<Controller>> = Vec::new();
 
@@ -153,7 +151,7 @@ impl Player {
         });
     }
 
-    fn process_gst_message(message: GstreamerMessage, controller: Rc<Vec<Box<Controller>>>, song_model: Rc<RefCell<SongModel>>, backend: Arc<Mutex<PlayerBackend>>) -> glib::Continue {
+    fn process_gst_message(message: GstreamerMessage, controller: Rc<Vec<Box<Controller>>>, song_model: Rc<RefCell<SongModel>>, backend: Arc<Mutex<GstreamerBackend>>) -> glib::Continue {
         match message {
             GstreamerMessage::SongTitleChanged(title) => {
                 debug!("Song title has changed: \"{}\"", title);

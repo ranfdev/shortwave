@@ -33,3 +33,4 @@ src/config.rs
 **/*.gresource
 **/#*#
 **/tags.*
+.flatpak-builder
