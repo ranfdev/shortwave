@@ -2,6 +2,7 @@ use chrono::NaiveTime;
 use glib::Sender;
 use gtk::prelude::*;
 use libhandy::{ActionRow, ActionRowExt};
+use open;
 
 use std::path::PathBuf;
 
@@ -11,7 +12,9 @@ use crate::song::Song;
 pub struct SongRow {
     pub widget: ActionRow,
     song: Song,
+    button_stack: gtk::Stack,
     save_button: gtk::Button,
+    open_button: gtk::Button,
 }
 
 impl SongRow {
@@ -21,15 +24,32 @@ impl SongRow {
         widget.set_subtitle(&Self::format_duration(song.duration.as_secs()));
         widget.set_icon_name("");
 
+        let button_stack = gtk::Stack::new();
+        widget.add_action(&button_stack);
+
         let save_button = gtk::Button::new();
         save_button.set_relief(gtk::ReliefStyle::None);
         save_button.set_valign(gtk::Align::Center);
         let save_image = gtk::Image::new_from_icon_name("document-save-symbolic", gtk::IconSize::__Unknown(4));
         save_button.add(&save_image);
-        widget.add_action(&save_button);
+        button_stack.add_named(&save_button, "save");
+
+        let open_button = gtk::Button::new();
+        open_button.set_relief(gtk::ReliefStyle::None);
+        open_button.set_valign(gtk::Align::Center);
+        let open_image = gtk::Image::new_from_icon_name("media-playback-start-symbolic", gtk::IconSize::__Unknown(4));
+        open_button.add(&open_image);
+        button_stack.add_named(&open_button, "open");
+
         widget.show_all();
 
-        let row = Self { widget, song, save_button };
+        let row = Self {
+            widget,
+            song,
+            button_stack,
+            save_button,
+            open_button,
+        };
 
         row.setup_signals();
         row
@@ -38,15 +58,22 @@ impl SongRow {
     fn setup_signals(&self) {
         let song = self.song.clone();
         let widget = self.widget.clone();
-        let save_button = self.save_button.clone();
+        let button_stack = self.button_stack.clone();
         self.save_button.connect_clicked(move |_| {
             let mut path = PathBuf::from(glib::get_user_special_dir(glib::UserDirectory::Music).unwrap());
             path.push(&Song::simplify_title(song.title.clone()));
             match song.save_as(path) {
-                Ok(()) => widget.set_subtitle("Saved"),
+                Ok(()) => {
+                    widget.set_subtitle("Saved");
+                    button_stack.set_visible_child_name("open");
+                }
                 Err(err) => widget.set_subtitle(&err.to_string()),
             };
-            save_button.set_visible(false);
+        });
+
+        let song = self.song.clone();
+        self.open_button.connect_clicked(move |_| {
+            open::that(song.path.clone()).expect("Could not play song");
         });
     }
 
