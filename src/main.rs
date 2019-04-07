@@ -9,6 +9,8 @@ extern crate glib;
 extern crate lazy_static;
 #[macro_use]
 extern crate serde_derive;
+#[macro_use]
+extern crate matches;
 
 mod model;
 mod player;

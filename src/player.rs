@@ -118,9 +118,6 @@ impl Player {
                 let _ = self.backend.lock().unwrap().set_state(gstreamer::State::Playing);
             }
             PlaybackState::Stopped => {
-                // Discard current recording because the song has not yet been completely recorded.
-                self.backend.lock().unwrap().stop_recording(false);
-
                 let _ = self.backend.lock().unwrap().set_state(gstreamer::State::Null);
             }
             _ => (),
@@ -187,6 +184,11 @@ impl Player {
             GstreamerMessage::PlaybackStateChanged(state) => {
                 for con in &*controller {
                     con.set_playback_state(&state);
+                }
+
+                if matches!(state, PlaybackState::Failure(_)) || matches!(state, PlaybackState::Stopped) {
+                    // Discard current recording because the song has not yet been completely recorded.
+                    backend.lock().unwrap().stop_recording(false);
                 }
             }
         }

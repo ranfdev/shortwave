@@ -194,7 +194,7 @@ impl GstreamerBackend {
     }
 
     pub fn stop_recording(&mut self, save_song: bool) -> Option<Song> {
-        debug!("Stop recording...");
+        debug!("Stop recording... (save song: {})", save_song);
 
         if self.recorderbin.lock().unwrap().is_some() {
             let rbin = self.recorderbin.clone();
