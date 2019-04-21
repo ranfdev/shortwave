@@ -30,6 +30,7 @@ flatpak:
         - flatpak build-bundle repo ${BUNDLE} ${APP_ID}
 
         # Create vendored archive
+        - flatpak-builder --run app ${MANIFEST_PATH} cargo install cargo-vendor
         - flatpak-builder --run app ${MANIFEST_PATH} ninja -C _build dist
         - mv _build/meson-dist/*.tar.xz ${VENDOR_PATH}
 
