@@ -12,6 +12,7 @@ flatpak:
     stage: "test"
     variables:
         MANIFEST_PATH: "de.haeckerfelix.ShortwaveDevel.json"
+        VENDOR_PATH: "shortwave.tar.xz"
         FLATPAK_MODULE: "shortwave"
         CONFIGURE_ARGS: "-Dprofile=development"
         RUNTIME_REPO: "https://sdk.gnome.org/gnome-nightly.flatpakrepo"
@@ -28,9 +29,14 @@ flatpak:
         - flatpak build-export repo app
         - flatpak build-bundle repo ${BUNDLE} ${APP_ID}
 
+        # Create vendored archive
+        - flatpak-builder --run app ${MANIFEST_PATH} ninja -C _build dist
+        - mv _build/meson-dist/*.tar.xz ${VENDOR_PATH}
+
     artifacts:
         paths:
             - $BUNDLE
+            - $VENDOR_PATH
         expire_in: 2 days
 
     cache:
