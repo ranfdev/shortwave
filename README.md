@@ -13,12 +13,18 @@ If you have any questions regarding the use or development of Shortwave,
 want to discuss design or simply hang out, please join us on our [#shortwave:matrix.org](https://matrix.to/#/#shortwave:matrix.org) channel.
 
 ## FAQ
+- **Whats missing for the first release?**
+
+    A number of features are still missing. If you want to know more, check [this list](https://gitlab.gnome.org/World/Shortwave/blob/master/TODO.md).
+
 - **Why its called 'Shortwave'?**
 
     Shortwave signals have a very long range because of their very good reflection properties. 
 Due to their long range, they can be received almost anywhere in the world. 
 The same applies to Internet radio stations, which can also be received almost anywhere in the world.
 That's why we decided to call the project 'Shortwave', because internet radio stations and shortwave radio stations share many characteristics.
+
+    If you want to know more about the naming process, you should read this [blog post](https://blogs.gnome.org/tbernard/2019/04/26/naming-your-app/)
 
 - **Why I cannot edit stations anymore?**
 
