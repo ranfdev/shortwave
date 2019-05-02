@@ -22,11 +22,9 @@ impl StationRow {
 
         // Set row information
         let station_label: gtk::Label = builder.get_object("station_label").unwrap();
-        let location_label: gtk::Label = builder.get_object("location_label").unwrap();
-        let votes_label: gtk::Label = builder.get_object("votes_label").unwrap();
+        let subtitle_label: gtk::Label = builder.get_object("subtitle_label").unwrap();
         station_label.set_text(&station.name);
-        location_label.set_text(&format!("{} {}", station.country, station.state));
-        votes_label.set_text(&format!("{} Votes", station.votes));
+        subtitle_label.set_text(&format!("{} {} · {} Votes", station.country, station.state, station.votes));
 
         let stationrow = Self {
             widget: row,

@@ -6,7 +6,7 @@
       <file compressed="true" preprocess="xml-stripblanks">gtk/library.ui</file>
       <file compressed="true" preprocess="xml-stripblanks">gtk/search.ui</file>
       <file compressed="true" preprocess="xml-stripblanks">gtk/station_row.ui</file>
-      <file compressed="true" preprocess="xml-stripblanks">gtk/station_listbox.ui</file>
+      <file compressed="true" preprocess="xml-stripblanks">gtk/station_flowbox.ui</file>
       <file compressed="true" preprocess="xml-stripblanks">gtk/menu.ui</file>
       <file compressed="true" preprocess="xml-stripblanks">gtk/shortcuts.ui</file>
       <file compressed="true" preprocess="xml-stripblanks">gtk/notification.ui</file>

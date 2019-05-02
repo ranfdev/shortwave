@@ -15,7 +15,7 @@ use crate::config;
 use crate::model::ObjectWrapper;
 use crate::model::StationModel;
 use crate::model::{Order, Sorting};
-use crate::widgets::station_listbox::StationListBox;
+use crate::widgets::station_flowbox::StationFlowBox;
 
 lazy_static! {
     static ref LIBRARY_PATH: PathBuf = {
@@ -40,9 +40,9 @@ impl Library {
         let content_box: gtk::Box = builder.get_object("content_box").unwrap();
 
         let library_model = RefCell::new(StationModel::new());
-        let station_listbox = StationListBox::new(sender.clone());
-        station_listbox.bind_model(&library_model.borrow());
-        content_box.add(&station_listbox.widget);
+        let station_flowbox = StationFlowBox::new(sender.clone());
+        station_flowbox.bind_model(&library_model.borrow());
+        content_box.add(&station_flowbox.widget);
 
         let logo_image: gtk::Image = builder.get_object("logo_image").unwrap();
         logo_image.set_from_icon_name(Some(format!("{}-symbolic", config::APP_ID).as_str()), gtk::IconSize::__Unknown(128));
