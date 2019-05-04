@@ -31,10 +31,10 @@
             "--share=network"
         ],
         "env" : {
-            "RUSTFLAGS" : "--remap-path-prefix =../ --error-format=short",
             "CARGO_HOME" : "/run/build/Shortwave/cargo",
             "RUST_BACKTRACE" : "1",
-            "RUST_LOG" : "shortwave=debug"
+            "RUST_LOG" : "shortwave=debug",
+            "RUSTFLAGS" : "--remap-path-prefix =../ --error-format=short"
         }
     },
     "modules" : [
@@ -62,7 +62,6 @@
         {
             "name" : "shortwave",
             "buildsystem" : "meson",
-            "builddir" : "true",
             "config-opts" : [
                 "-Dprofile=development"
             ],

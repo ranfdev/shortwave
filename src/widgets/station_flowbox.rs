@@ -31,14 +31,14 @@ impl StationFlowBox {
 
         // Set automatically flowbox colums
         let fb = flowbox.clone();
-        flowbox.connect_size_allocate(move |_, alloc|{
+        flowbox.connect_size_allocate(move |_, alloc| {
             if alloc.width > 1000 {
                 fb.set_min_children_per_line(3);
                 fb.set_max_children_per_line(3);
-            }else if alloc.width > 650{
+            } else if alloc.width > 650 {
                 fb.set_min_children_per_line(2);
                 fb.set_max_children_per_line(2);
-            }else{
+            } else {
                 fb.set_min_children_per_line(1);
                 fb.set_max_children_per_line(1);
             }

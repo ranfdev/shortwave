@@ -40,14 +40,25 @@ impl Search {
 
     pub fn search_for(&self, data: StationSearch) {
         debug!("search for: {:?}", data);
-
-        let mut client = Client::new("http://www.radio-browser.info");
-        let result = client.search(data).unwrap();
-
-        self.result_model.borrow_mut().clear();
-        for station in result {
-            self.result_model.borrow_mut().add_station(station);
-        }
+        let (sender, receiver) = glib::MainContext::channel(glib::PRIORITY_LOW);
+        std::thread::spawn(move || {
+            let mut client = Client::new("http://www.radio-browser.info");
+            let result = client.search(data);
+            let _ = sender.send(result);
+        });
+        let result_model_clone = self.result_model.clone();
+        receiver.attach(None, move |result| {
+            match result {
+                Ok(stations) => {
+                    result_model_clone.borrow_mut().clear();
+                    for station in stations {
+                        result_model_clone.borrow_mut().add_station(station);
+                    }
+                }
+                Err(_) => {}
+            }
+            glib::Continue(false)
+        });
     }
 
     fn setup_signals(&self) {
